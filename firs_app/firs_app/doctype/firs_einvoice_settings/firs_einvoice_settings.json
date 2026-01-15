@@ -1,0 +1,334 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-12-28 15:34:22.859745",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "business_information_tab",
+  "business_information",
+  "phone_number",
+  "column_break_vdii",
+  "tax_id",
+  "email",
+  "column_break_skht",
+  "biz_image",
+  "business_logo",
+  "business_description",
+  "access_provider_section",
+  "access_points_provider",
+  "api_integration_tab",
+  "base_url",
+  "entity_id",
+  "business_id",
+  "api_key",
+  "client_secret",
+  "crytographic_key",
+  "process_key",
+  "column_break_rbjd",
+  "service_id",
+  "prn_template",
+  "section_break_sarq",
+  "crytographic_details",
+  "public_key",
+  "public_key_decoded",
+  "certificate",
+  "firs_data_fetch_tab",
+  "get_invoice_type",
+  "get_currencies",
+  "get_countries",
+  "column_break_spum",
+  "get_payment_means",
+  "get_products_codes",
+  "get_all_states",
+  "get_payment_list",
+  "column_break_ubwa",
+  "get_categories",
+  "get_services_codes",
+  "get_all_local_governments",
+  "refresh_section",
+  "get_vat_exemptions",
+  "tools_tab",
+  "enabled",
+  "system_id",
+  "column_break_ctzo",
+  "invoice_update_frequency"
+ ],
+ "fields": [
+  {
+   "fieldname": "business_information_tab",
+   "fieldtype": "Tab Break",
+   "label": "Business Information"
+  },
+  {
+   "bold": 1,
+   "fieldname": "business_information",
+   "fieldtype": "Data",
+   "label": "Business Information"
+  },
+  {
+   "bold": 1,
+   "fieldname": "phone_number",
+   "fieldtype": "Phone",
+   "label": "Phone Number"
+  },
+  {
+   "fieldname": "column_break_vdii",
+   "fieldtype": "Column Break"
+  },
+  {
+   "bold": 1,
+   "fieldname": "tax_id",
+   "fieldtype": "Data",
+   "label": "Tax Identificatio Number"
+  },
+  {
+   "bold": 1,
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email"
+  },
+  {
+   "fieldname": "column_break_skht",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "biz_image",
+   "fieldtype": "Image",
+   "hidden": 1,
+   "label": "Biz Image"
+  },
+  {
+   "fieldname": "business_logo",
+   "fieldtype": "Attach Image",
+   "label": "Business Logo"
+  },
+  {
+   "fieldname": "business_description",
+   "fieldtype": "Small Text",
+   "label": "Business Description"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "access_provider_section",
+   "fieldtype": "Section Break",
+   "label": "Access Provider"
+  },
+  {
+   "fieldname": "access_points_provider",
+   "fieldtype": "Select",
+   "label": "Access Points Provider",
+   "options": "\nMBS DEFAULT"
+  },
+  {
+   "fieldname": "api_integration_tab",
+   "fieldtype": "Tab Break",
+   "label": "API Integration"
+  },
+  {
+   "fieldname": "base_url",
+   "fieldtype": "Data",
+   "label": "Base URL"
+  },
+  {
+   "fieldname": "entity_id",
+   "fieldtype": "Data",
+   "label": "Entity ID"
+  },
+  {
+   "fieldname": "business_id",
+   "fieldtype": "Data",
+   "label": "Business ID"
+  },
+  {
+   "fieldname": "api_key",
+   "fieldtype": "Data",
+   "label": "API Key"
+  },
+  {
+   "fieldname": "client_secret",
+   "fieldtype": "Data",
+   "label": "Client Secret"
+  },
+  {
+   "fieldname": "column_break_rbjd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "service_id",
+   "fieldtype": "Data",
+   "label": "Service ID"
+  },
+  {
+   "fieldname": "prn_template",
+   "fieldtype": "Code",
+   "label": "PRN Template"
+  },
+  {
+   "fieldname": "section_break_sarq",
+   "fieldtype": "Section Break",
+   "label": "Key Details Section"
+  },
+  {
+   "fieldname": "crytographic_key",
+   "fieldtype": "Attach",
+   "hidden": 1,
+   "label": "Crytographic Key",
+   "read_only": 1
+  },
+  {
+   "fieldname": "firs_data_fetch_tab",
+   "fieldtype": "Tab Break",
+   "label": "FIRS Data Fetch"
+  },
+  {
+   "fieldname": "get_invoice_type",
+   "fieldtype": "Button",
+   "label": "Get Invoice Type"
+  },
+  {
+   "fieldname": "column_break_spum",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "get_payment_list",
+   "fieldtype": "Button",
+   "hidden": 1,
+   "label": "Get Payment List"
+  },
+  {
+   "fieldname": "column_break_ubwa",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "get_categories",
+   "fieldtype": "Button",
+   "label": "Get Categories"
+  },
+  {
+   "fieldname": "tools_tab",
+   "fieldtype": "Tab Break",
+   "label": "Tools"
+  },
+  {
+   "bold": 1,
+   "default": "0",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "system_id",
+   "fieldtype": "Data",
+   "label": "System ID"
+  },
+  {
+   "fieldname": "column_break_ctzo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "bold": 1,
+   "fieldname": "invoice_update_frequency",
+   "fieldtype": "Select",
+   "label": "Invoice Update Frequency",
+   "options": "Each Transaction\nBulk Background"
+  },
+  {
+   "fieldname": "get_currencies",
+   "fieldtype": "Button",
+   "label": "Get Currencies"
+  },
+  {
+   "fieldname": "get_countries",
+   "fieldtype": "Button",
+   "label": "Get Countries"
+  },
+  {
+   "fieldname": "get_products_codes",
+   "fieldtype": "Button",
+   "label": "Get Products Codes"
+  },
+  {
+   "fieldname": "get_all_states",
+   "fieldtype": "Button",
+   "label": "Get All States"
+  },
+  {
+   "fieldname": "get_services_codes",
+   "fieldtype": "Button",
+   "label": "Get Services Codes"
+  },
+  {
+   "fieldname": "get_all_local_governments",
+   "fieldtype": "Button",
+   "label": "Get All Local Governments"
+  },
+  {
+   "fieldname": "refresh_section",
+   "fieldtype": "Section Break",
+   "label": "Refresh"
+  },
+  {
+   "fieldname": "get_vat_exemptions",
+   "fieldtype": "Button",
+   "label": "Get VAT Exemptions"
+  },
+  {
+   "fieldname": "get_payment_means",
+   "fieldtype": "Button",
+   "label": "Get Payment Means"
+  },
+  {
+   "fieldname": "crytographic_details",
+   "fieldtype": "HTML",
+   "label": "Crytographic Details",
+   "options": "<input type=\"button\" class=\"btn btn-primary btn-small\" value=\"...\">\n<hr>"
+  },
+  {
+   "fieldname": "public_key",
+   "fieldtype": "Small Text",
+   "label": "Public Key"
+  },
+  {
+   "fieldname": "public_key_decoded",
+   "fieldtype": "Small Text",
+   "label": "Public Key Decoded"
+  },
+  {
+   "fieldname": "certificate",
+   "fieldtype": "Data",
+   "label": "Certificate"
+  },
+  {
+   "fieldname": "process_key",
+   "fieldtype": "Button",
+   "label": "Process key"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-01-15 16:26:32.111831",
+ "modified_by": "Administrator",
+ "module": "Firs App",
+ "name": "FIRS Einvoice Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

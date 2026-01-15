@@ -1,0 +1,91 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-12-28 23:46:39.964713",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "syn_id",
+  "sales_invoice",
+  "invoice_status",
+  "syn_status",
+  "syned",
+  "returned_code"
+ ],
+ "fields": [
+  {
+   "fieldname": "syn_id",
+   "fieldtype": "Data",
+   "label": "Syn ID"
+  },
+  {
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "label": "Sales Invoice",
+   "options": "Sales Invoice"
+  },
+  {
+   "fieldname": "invoice_status",
+   "fieldtype": "Select",
+   "label": "Invoice Status",
+   "options": "Submitted\nCancelled"
+  },
+  {
+   "fieldname": "syn_status",
+   "fieldtype": "Select",
+   "label": "Syn Status",
+   "options": "Pause\nProcessing\nCompleted"
+  },
+  {
+   "default": "0",
+   "fieldname": "syned",
+   "fieldtype": "Check",
+   "label": "Syned"
+  },
+  {
+   "fieldname": "returned_code",
+   "fieldtype": "Data",
+   "label": "Returned Code"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-29 00:00:04.399675",
+ "modified_by": "Administrator",
+ "module": "Firs App",
+ "name": "Firs Syn",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
