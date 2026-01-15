@@ -1,0 +1,89 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-12-29 16:54:25.273260",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "currency_id",
+  "symbol",
+  "currency_name",
+  "symbol_native",
+  "decimal_digits",
+  "rounding",
+  "code",
+  "plural_name"
+ ],
+ "fields": [
+  {
+   "fieldname": "currency_id",
+   "fieldtype": "Data",
+   "label": "Currency ID"
+  },
+  {
+   "fieldname": "symbol",
+   "fieldtype": "Data",
+   "label": "Currency Symbol"
+  },
+  {
+   "fieldname": "currency_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Currency Name"
+  },
+  {
+   "fieldname": "symbol_native",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Native Currency Symbol"
+  },
+  {
+   "fieldname": "decimal_digits",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Decimal Digits"
+  },
+  {
+   "fieldname": "rounding",
+   "fieldtype": "Int",
+   "label": "Rounding"
+  },
+  {
+   "fieldname": "code",
+   "fieldtype": "Data",
+   "label": "Currency Code"
+  },
+  {
+   "fieldname": "plural_name",
+   "fieldtype": "Data",
+   "label": "Plural Name"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-11 23:42:53.743047",
+ "modified_by": "Administrator",
+ "module": "Firs App",
+ "name": "Firs Currencies",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
