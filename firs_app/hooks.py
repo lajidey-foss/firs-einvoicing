@@ -267,6 +267,11 @@ fixtures = [
                     "Item-custom_hs_product_description",
                     "Item-custom_firs_service_code",
                     "Item-custom_firs_service_description",
+                    "Sales Invoice-custom_firs_data",
+                    "Sales Invoice-custom_encrypted_qr_data",
+                    "Sales Invoice-custom_qr_code_image",
+                    "Sales Invoice-custom_invoice_schema",
+                    "Sales Invoice-custom_irn_unix_timestamp"
                 )
             ]
         ]
