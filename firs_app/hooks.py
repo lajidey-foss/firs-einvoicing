@@ -258,7 +258,10 @@ fixtures = [
                     "Address-custom_state_code",
                     "Address-custom_state_name",
                     "Address-custom_country_code",
-                    "Address-custom_country_name"
+                    "Address-custom_country_name",
+                    "Customer-custom_firs_info",
+                    "Customer-custom_email",
+                    "Customer-custom_phone"
                 )
             ]
         ]
