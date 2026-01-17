@@ -261,7 +261,12 @@ fixtures = [
                     "Address-custom_country_name",
                     "Customer-custom_firs_info",
                     "Customer-custom_email",
-                    "Customer-custom_phone"
+                    "Customer-custom_phone",
+                    "Item-custom_firs_item_type",
+                    "Item-custom_hs_code",
+                    "Item-custom_hs_product_description",
+                    "Item-custom_firs_service_code",
+                    "Item-custom_firs_service_description",
                 )
             ]
         ]
