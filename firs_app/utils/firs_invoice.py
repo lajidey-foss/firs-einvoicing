@@ -6,6 +6,8 @@ import json
 from cryptography.hazmat.primitives import hashes, serialization 
 from cryptography.hazmat.primitives.asymmetric import padding 
 from cryptography.fernet import Fernet
+import qrcode
+from io import BytesIO
 
 # Configure these values for your environment
 PUBLIC_KEY_PATH = "/home/frappe/frappe-bench/sites/site1/public/files/public_key.pem"
@@ -21,27 +23,30 @@ def firs_work_flow_draft (doc, method):
     coy = frappe.get_doc('Company', doc.company)
 
     # set  IRN & UNIX TIMESTAMP 
-    irn_val = doc.name +"-" + get_service_id(firs_settings) +"-" + get_unix_timestamp()
-
-    print(f"\n\n IRN {irn_val}")
+    irn_val = f"{doc.name}-{get_service_id(firs_settings)}-{get_unix_timestamp()}"
+    #doc.custom_irn_unix_timestamp = irn_val
 
     # Generate FIR Encrypted QR Data
     #firs_encrypt_qr_data = get_encrypt_qr_code(irn_val)
     firs_encrypt_qr_data = encrypt_qrcode(irn_val, firs_settings)
+    doc.custom_encrypted_qr_data = json.dumps(firs_encrypt_qr_data)
 
     # set FIRs Invoice Schema
     invoice_schema_paylod = build_invoice_schema(doc, firs_settings)
     invoice_schema_paylod["irn"] = irn_val
-    #doc.custom_invoice_schema = invoice_schema_paylod
-    print(f"\n\n invoice schema  : {invoice_schema_paylod}")
+    doc.custom_invoice_schema = json.dumps(invoice_schema_paylod)
 
-    # add new data to doc
-    doc.db_set({"custom_irn_unix_timestamp": irn_val,
-                "custom_encrypted_qr_data": json.dumps(firs_encrypt_qr_data),
-                "custom_invoice_schema": json.dumps(invoice_schema_paylod)
-             })
+    # Generate  QR Code
+    generate_qr_code = build_qrcode_generator(doc)
+    #doc.custom_qr_code_image = generate_qr_code
     
-    #doc.save(ignore_permissions=True)
+
+    doc.db_set({
+        "custom_irn_unix_timestamp": irn_val,
+        "custom_encrypted_qr_data": json.dumps(firs_encrypt_qr_data),
+        "custom_invoice_schema": json.dumps(invoice_schema_paylod),
+        "custom_qr_code_image" : generate_qr_code
+    }, update_modified=False)
 
     # call firs validation method
     # on success call do other stuff notify or create success log.
@@ -227,3 +232,43 @@ def build_invoice_schema(doc, settings):
 
     return vch_payload
 
+def build_qrcode_generator(data):
+    print(f"\n\n ======================QR-CODE=============================> \n\n")
+    #if self.data_qr_code and not self.has_value_changed('encrypted_data'):
+    if data.custom_qr_code_image and not data.has_value_changed('custom_encrypted_qr_data'):
+        return
+
+    if data.custom_encrypted_qr_data:
+        existing_file_url = data.custom_qr_code_image
+        
+        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr.add_data(data.custom_encrypted_qr_data)
+        qr.make(fit=True)
+
+        img = qr.make_image(fill_color="black", back_color="white")
+
+        #save image to buffer
+        buffered = BytesIO()
+        img.save(buffered, format="PNG")
+
+        #Save as file 
+        file_name = f"QR_{data.name}.png"
+        print(f"\n\n ===================> {file_name}")
+
+        if existing_file_url:
+            #frappe.db.delete("File", {"file_url": existing_file_url, "attached_to_name": self.name})
+            print(f"here")
+            frappe.db.delete("File", {"file_url": existing_file_url, "attached_to_name": data.name})
+        
+        _file = frappe.get_doc({
+            "doctype": "File",
+            "file_name": file_name,
+            "attached_to_doctype": data.doctype,
+            "attached_to_name": data.name,
+            "content": buffered.getvalue(),
+            "is_private": 0
+        })
+        _file.save()
+
+        #data.db_set("custom_qr_code_image", _file.file_url, update_modified=False)
+        return _file.file_url
