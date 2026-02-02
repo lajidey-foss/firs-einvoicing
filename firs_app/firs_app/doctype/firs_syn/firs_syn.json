@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:syn_id",
  "creation": "2025-12-28 23:46:39.964713",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -10,31 +11,35 @@
   "invoice_status",
   "syn_status",
   "syned",
-  "returned_code"
+  "returned_code",
+  "api_response"
  ],
  "fields": [
   {
    "fieldname": "syn_id",
    "fieldtype": "Data",
-   "label": "Syn ID"
+   "label": "Syn ID",
+   "unique": 1
   },
   {
    "fieldname": "sales_invoice",
    "fieldtype": "Link",
    "label": "Sales Invoice",
-   "options": "Sales Invoice"
+   "options": "Sales Invoice",
+   "read_only": 1
   },
   {
+   "fetch_from": "sales_invoice.status",
    "fieldname": "invoice_status",
-   "fieldtype": "Select",
+   "fieldtype": "Data",
    "label": "Invoice Status",
-   "options": "Submitted\nCancelled"
+   "read_only": 1
   },
   {
    "fieldname": "syn_status",
    "fieldtype": "Select",
    "label": "Syn Status",
-   "options": "Pause\nProcessing\nCompleted"
+   "options": "Pending\nRejected\nValidated\nSigned"
   },
   {
    "default": "0",
@@ -46,15 +51,22 @@
    "fieldname": "returned_code",
    "fieldtype": "Data",
    "label": "Returned Code"
+  },
+  {
+   "fieldname": "api_response",
+   "fieldtype": "Code",
+   "label": "API Response",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-29 00:00:04.399675",
+ "modified": "2026-02-02 01:45:51.547413",
  "modified_by": "Administrator",
  "module": "Firs App",
  "name": "Firs Syn",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

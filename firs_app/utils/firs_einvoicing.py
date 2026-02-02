@@ -1,6 +1,7 @@
 import frappe
 import json
 import base64
+from frappe import _
 
 def get_api_url(endpoint):
     # Fetch base URL from a custom 'Settings' DocType
@@ -56,12 +57,12 @@ def update_invoice_type(invoice_data):
         code = item.get("code")
         value = item.get("value")
 
-        if frappe.db.exists("Invoice Type", {"code": code}):
-            frappe.db.set_value("Invoice Type", {"code": code}, "value", value)
+        if frappe.db.exists("Invoice Type", {"type_code": code}):
+            frappe.db.set_value("Invoice Type", {"type_code": code}, "value", value)
         else:
             doc = frappe.get_doc({
                 "doctype": "Invoice Type",
-                "key": code,
+                "type_code": code,
                 "value": value
             })
             doc.insert(ignore_permissions=True)
@@ -71,6 +72,72 @@ def update_invoice_type(invoice_data):
 
 @frappe.whitelist()
 def update_currencies(currency_data):
+
+    """ try:
+        if isinstance(currency_data, str):
+            try:
+                currency_data = json.loads(currency_data)
+            except Exception:
+                frappe.throw(_("Invalid currencies payload"))
+        if not isinstance(currency_data, list):
+            frappe.throw(_("Expected a list of currency objects"))
+        
+        created = 0
+        updated = 0
+        errors = []
+
+        for cd in currency_data:
+            try:
+                code = (cd.get("code") or "").strip()
+                if not code:
+                    raise ValueError("Missing currency code")
+                
+                values = {
+                    "currency_name": cd.get("name"),
+                    "symbol": cd.get("symbol"),
+                    "symbol_native": cd.get("symbol_native"),
+                    "decimal_digits": cd.get("decimal_digits"),
+                    "rounding": cd.get("rounding"),
+                    "plural_name": cd.get("name_plural")
+                }
+                # check this code if already exists
+                existing = frappe.db.exists("Firs Currency", {"currency_code": code}, ["name"], as_dict=True)
+
+                if existing:
+                    doc = frappe.get_doc("Firs Currency", existing.name)
+
+                    for k, v in values.items():
+                        if v is not None:
+                            if k in doc.meta.get_fieldnames():
+                                doc.set(k, v)
+                    doc.save(ignore_permission=True)
+                    updated += 1
+                else:
+                    new_doc = frappe.get_doc({
+                        "doctype": "Firs Currency",
+                        "currency_code": code,
+                    })
+
+                    for k in ("currency_name", "symbol", "symbol_native", "decimal_digits", "rounding", "plural_name"):
+                        if values.get(k) is not None and k in new_doc.meta.get_fieldnames():
+                            new_doc.set(k, values.get(k))
+                    new_doc.insert(ignore_permissions=True)
+                    created +=1
+            except Exception as e:
+                errors.append({"item": cd, "error": str(e)})
+                frappe.log_error(frappe.get_traceback(), "update_currencies item error")
+        
+        result = {"status": "success", "created": created, "updated": updated, "errors": errors}
+        return result
+    
+    except frappe.ValidationError:
+        raise
+    except Exception as exc:
+        frappe.log_error(frappe.get_traceback(), "update_currencies error")
+        return {"status": "error", "message": str(exc)} """
+
+
+
     if isinstance(currency_data, str):
         currency_data = json.loads(currency_data)
 
@@ -91,26 +158,27 @@ def update_currencies(currency_data):
 
         # Check if record exists
         existing = frappe.db.exists(
-            "Firs Currencies",
-            {"code": code}
+            "Firs Currency",
+            {"currency_code": code}
         )
 
         if existing:
             frappe.db.set_value(
-                "Firs Currencies",
-                {"code": code},
+                "Firs Currency",
+                {"currency_code": code},
                 values
             )
         else:
             doc = frappe.get_doc({
-                "doctype": "Firs Currencies",
-                "code": code,
+                "doctype": "Firs Currency",
+                "currency_code": code,
                 **values
             })
             doc.insert(ignore_permissions=True)
 
     frappe.db.commit()
-    return {"status": "success"}
+    result = {"status": "success"}
+    return result
 
 @frappe.whitelist()
 def update_countries(countries_data):
@@ -168,12 +236,12 @@ def update_payment_means(invoice_data):
         code = item.get("code")
         value = item.get("value")
 
-        if frappe.db.exists("Payment Means", {"key": code}):
-            frappe.db.set_value("Payment Means", {"key": code}, "value", value)
+        if frappe.db.exists("Payment Means", {"payment_code": code}):
+            frappe.db.set_value("Payment Means", {"payment_code": code}, "value", value)
         else:
             doc = frappe.get_doc({
                 "doctype": "Payment Means",
-                "key": code,
+                "payment_code": code,
                 "value": value
             })
             doc.insert(ignore_permissions=True)
@@ -192,6 +260,7 @@ def update_products_codes(invoice_data):
 
         if frappe.db.exists("Products Codes", {"hscode": code}):
             frappe.db.set_value("Products Codes", {"hscode": code}, "description", value)
+            #frappe.db.set_value("Products Codes", {"hscode": code}, "description", value)
         else:
             doc = frappe.get_doc({
                 "doctype": "Products Codes",
@@ -234,12 +303,12 @@ def update_tax_categories(invoice_data):
         code = item.get("code")
         value = item.get("value")
 
-        if frappe.db.exists("Tax Categories", {"key": code}):
-            frappe.db.set_value("Tax Categories", {"key": code}, "value", value)
+        if frappe.db.exists("Tax Categories", {"tax_category_code": code}):
+            frappe.db.set_value("Tax Categories", {"tax_category_code": code}, "value", value)
         else:
             doc = frappe.get_doc({
                 "doctype": "Tax Categories",
-                "key": code,
+                "tax_category_code": code,
                 "value": value
             })
             doc.insert(ignore_permissions=True)
@@ -256,12 +325,12 @@ def update_services_codes(invoice_data):
         code = item.get("code")
         value = item.get("description")
 
-        if frappe.db.exists("Service Codes", {"code": code}):
-            frappe.db.set_value("Service Codes", {"code": code}, "description", value)
+        if frappe.db.exists("Service Codes", {"service_id": code}):
+            frappe.db.set_value("Service Codes", {"service_id": code}, "description", value)
         else:
             doc = frappe.get_doc({
                 "doctype": "Service Codes",
-                "code": code,
+                "service_id": code,
                 "description": value
             })
             doc.insert(ignore_permissions=True)
@@ -294,6 +363,7 @@ def update_local_governments(invoice_data):
 
     frappe.db.commit()
     return "OK"
+
 @frappe.whitelist(allow_guest= False)
 def get_keys_cert_upload():
     file_url = frappe.form_dict.get("file_url")
@@ -314,26 +384,44 @@ def get_keys_cert_upload():
             data = json.loads(content)
             encoded_key = data.get("public_key")
 
-            # print(f"n/n/ raw public key : {encoded_key} n/")
+            if encoded_key is None:
+                frappe.throw(_("Uploaded JSON missing 'key' information "))
+
+            #frappe.db.set_value("Schema Setting", None, "sm_public_key", public_key_val, update_modified=True)
             
             if encoded_key:
+                normalize_encoded_key = "".join(encoded_key.split())
+                frappe.db.set_value("FIRS Einvoice Settings", None, "public_key", normalize_encoded_key, update_modified=True)
+                
                 # Decode the Base64 key to PEM format
-                decoded_key = base64.b64decode(encoded_key).decode("utf-8")
+                try: 
+                    #decoded_bytes = base64.b64decode(b64_str) 
+                    decoded_key = base64.b64decode(normalize_encoded_key).decode("utf-8")
+                except Exception as e: 
+                    frappe.throw(f"Failed to decode key: {e}")
                 
-                #frappe.db.set_value("Your DocType Name", docname, "public_key_field", decoded_key)
-                frappe.db.set_value("FIRS Einvoice Settings","FIRS Einvoice Settings", {
-                    "public_key": encoded_key,"public_key_decoded": decoded_key,"certificate": data.get("certificate")
-                })
-
-                #frappe.db.commit()
+                if "-----BEGIN PUBLIC KEY-----" not in decoded_key or "-----END PUBLIC KEY-----" not in decoded_key:
+                    stripped = decoded_key.strip()
+                    if stripped.startswith("LS0t") or stripped.startswith("MIIB") or stripped.startswith("MIGf"):
+                        warning = "Decoded content does not contain PEM markers. Saved anyway."
+                    else:
+                        warning = None
+                else:
+                    warning = None
                 
-                #result = { "public_key": decoded_key }
-                #print(result)
 
-                # Return success message to client
+                frappe.db.set_value("FIRS Einvoice Settings", None, "public_key_decoded", decoded_key, update_modified=True)
+
+                if warning:
+                    frappe.response["warning"] = warning
+
                 frappe.response["message"] = True
             else:
-                frappe.throw("Field 'public_key' not found in JSON payload")
+                frappe.throw("Field 'key' not found in JSON payload")
+            if data.get("certificate") is not None: 
+                frappe.db.set_value("FIRS Einvoice Settings", None, "certificate", data.get("certificate"), update_modified=True) 
+            
+            frappe.db.commit()
                 
         except Exception as e:
             frappe.throw(f"Failed to process file: {str(e)}")

@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:payment_code",
  "creation": "2025-12-29 16:25:05.471347",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -14,7 +15,8 @@
   {
    "fieldname": "payment_code",
    "fieldtype": "Data",
-   "label": "Payment Code"
+   "label": "Payment Code",
+   "unique": 1
   },
   {
    "fieldname": "key",
@@ -37,10 +39,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-12 00:14:16.735186",
+ "modified": "2026-01-26 23:33:37.855100",
  "modified_by": "Administrator",
  "module": "Firs App",
  "name": "Payment Means",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

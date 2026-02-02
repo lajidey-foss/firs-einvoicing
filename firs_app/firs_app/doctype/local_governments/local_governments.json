@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:lg_code",
  "creation": "2025-12-29 18:01:13.314451",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -26,7 +27,8 @@
    "fieldname": "lg_code",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "LG Code"
+   "label": "LG Code",
+   "unique": 1
   },
   {
    "fieldname": "state_code",
@@ -38,10 +40,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-12 02:46:54.715260",
+ "modified": "2026-01-26 23:17:21.663952",
  "modified_by": "Administrator",
  "module": "Firs App",
  "name": "Local Governments",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
