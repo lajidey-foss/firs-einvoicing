@@ -15,15 +15,15 @@ frappe.ui.form.on("FIRS Einvoice Settings", {
 	},
 
     get_invoice_type: function (frm) {
-        // api/v1/invoice/resources/invoice-types
-        const url = MY_APP_CONFIG.get_url(frm.doc.base_url,'api/v1/invoice/resources/invoice-types');
+        let endpoint = "api/v1/invoice/resources/invoice-types"
+        const url = MY_APP_CONFIG.get_url(frm.doc.base_url, endpoint);
         console.log("url :",url);
                 // Call external API
                 fetch(url, {
                     method: 'GET',
-                    /* headers: {
+                    headers: {
                         "Content-Type": "application/json"
-                    } */
+                    }
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -48,7 +48,11 @@ frappe.ui.form.on("FIRS Einvoice Settings", {
                 });
     },
     get_currencies: function (frm) {
-        const url = MY_APP_CONFIG.get_url(frm.doc.base_url,'api/v1/invoice/resources/currencies');
+        // const url = values.base_url.replace(/\/+$/, '') + values.endpoint;
+        let endpoint = "api/v1/invoice/resources/currencies";
+        const url = MY_APP_CONFIG.get_url(frm.doc.base_url,endpoint);
+
+        frm.page.set_indicator(__('Syncing currencies...'), 'orange');
 
         // Call external API
         fetch(url, {
@@ -60,23 +64,32 @@ frappe.ui.form.on("FIRS Einvoice Settings", {
         .then(response => response.json())
         .then(data => {
             // data = array of currency objects
-            console.log("data returned :", data);
+            console.log("data returned :", data.data);
 
             frappe.call({
                 method: "firs_app.utils.firs_einvoicing.update_currencies",
                 args: {
                     currency_data: data.data
                 },
+                freeze: true, 
+                freeze_message: __("Saving currencies to site..."),
                 callback: function (r) {
-                    if (!r.exc) {
-                        frappe.msgprint("Currency master updated successfully");
+                    frm.page.clear_indicator(); 
+                    if (r.message && r.message.status === "success") {
+                        frappe.msgprint(__('Currencies synced: ', [r.message.created || 0, r.message.updated || 0]));
                     }
+                    else { frappe.msgprint(__('Sync failed: {0}', [r.message && r.message.message || JSON.stringify(r.message)])); }
+                    /* if (!r.exc) {
+                        frappe.msgprint("Currency master updated successfully");
+                    } */
                 }
             });
         })
         .catch(err => {
             console.error(err);
-            frappe.msgprint("Failed to fetch currency data");
+            frm.page.clear_indicator();
+            frappe.msgprint(__('Failed to fetch currencies: {0}', [err.message]));
+            //frappe.msgprint("Failed to fetch currency data");
         });
 
     },

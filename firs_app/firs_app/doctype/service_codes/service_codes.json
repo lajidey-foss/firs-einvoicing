@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:code",
+ "autoname": "field:service_id",
  "creation": "2025-12-29 17:55:44.721038",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -14,7 +14,8 @@
   {
    "fieldname": "service_id",
    "fieldtype": "Data",
-   "label": "Service ID"
+   "label": "Service ID",
+   "unique": 1
   },
   {
    "fieldname": "code",
@@ -33,7 +34,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-17 03:52:07.523105",
+ "modified": "2026-01-26 23:39:32.983959",
  "modified_by": "Administrator",
  "module": "Firs App",
  "name": "Service Codes",

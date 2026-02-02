@@ -136,10 +136,12 @@ app_license = "mit"
 # Document Events
 # ---------------
 # Hook on document methods and events
+#"on_submit": "firs_app.utils.firs_invoice.submit_sign"
 
 doc_events = {
     "Sales Invoice": {
         "on_update": "firs_app.utils.firs_invoice.firs_work_flow_draft"
+        
     }
 }
 
@@ -266,10 +268,10 @@ fixtures = [
                     "Item-custom_firs_service_code",
                     "Item-custom_firs_service_description",
                     "Sales Invoice-custom_firs_data",
-                    "Sales Invoice-custom_encrypted_qr_data",
-                    "Sales Invoice-custom_qr_code_image",
-                    "Sales Invoice-custom_invoice_schema",
-                    "Sales Invoice-custom_irn_unix_timestamp"
+                    "Sales Invoice-custom_encrypted_irn_qr",
+                    "Sales Invoice-custom_irn_unix_timestamp",
+                    "Sales Invoice-custom_firs_invoice_schema",
+                    "Sales Invoice-custom_encrypted_qr_image"
                 )
             ]
         ]

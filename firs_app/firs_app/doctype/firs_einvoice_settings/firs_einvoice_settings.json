@@ -8,6 +8,7 @@
   "business_information_tab",
   "business_information",
   "phone_number",
+  "phone_details",
   "column_break_vdii",
   "tax_id",
   "email",
@@ -303,13 +304,18 @@
    "fieldname": "process_key",
    "fieldtype": "Button",
    "label": "Process key"
+  },
+  {
+   "fieldname": "phone_details",
+   "fieldtype": "Data",
+   "label": "Phone Details"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-01-15 16:26:32.111831",
+ "modified": "2026-01-29 14:27:04.800995",
  "modified_by": "Administrator",
  "module": "Firs App",
  "name": "FIRS Einvoice Settings",
