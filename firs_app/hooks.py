@@ -262,6 +262,8 @@ fixtures = [
                     "Customer-custom_firs_info",
                     "Customer-custom_email",
                     "Customer-custom_phone",
+                    "Customer-custom_firs_customer_desc",
+                    "Customer-custom_business_description",
                     "Item-custom_firs_item_type",
                     "Item-custom_hs_code",
                     "Item-custom_hs_product_description",
