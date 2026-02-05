@@ -317,8 +317,9 @@ def validate_firs_invoice_schema (self, invoice_payload, firs):
 
 def _build_headers(api_key: str, secret_key: str) -> Dict[str, str]:
     """Return headers required by the external API.
-        "Content-Type": "application/json","""
+        """
     return {
+        "Content-Type": "application/json",
         "X-API-KEY": api_key,
         "X-SECRET-KEY": secret_key
     }
@@ -336,11 +337,12 @@ def call_invoice_validation_api(payload: Dict[str, Any],
     base_url = base_url
     url = base_url.rstrip("/") + VALIDATE_INVOICE_DATA
     headers = _build_headers(api_key, secret_key)
+    print(f"\n header : \n{headers}")
 
     last_exception = None
     for attempt in range(1, retries + 2):  # retries attempts + initial
         try:
-            print(f"\n==> this is try :{attempt} and header is : {headers}\n")
+            print(f"\n==> atempt :{attempt}")
             resp = requests.post(url, json=payload, headers=headers, timeout=timeout)
             # Try to parse JSON response, fallback to text
             try:
