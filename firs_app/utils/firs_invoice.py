@@ -74,7 +74,7 @@ def firs_work_flow_draft (doc, method):
 def get_unix_timestamp(pdate):
     uxtime = int(time.time())
     pdate = pdate.replace("-", "")
-    result = f"{pdate}.{str(uxtime)}"
+    result = f"{pdate}" #f"{pdate}.{str(uxtime)}"
     #print(f"\n\n ========unix date & timestamp ===========> {result}")
     return result
 
@@ -184,8 +184,10 @@ def build_invoice_schema(doc, settings):
     # invoice_line from items table
     invoice_lines = []
     for item in doc.get("items") or []:
-        # load the specific item 
-        itm = frappe.get_doc('Item', item.get("item_name"))
+        # load the specific item
+        # myitem = item.get("item_name") 
+        # print(f"get item : {myitem}")
+        itm = frappe.get_doc('Item', item.get("item_code"))
         invoice_lines.append({
             "hsn_code": itm.get("custom_hs_code") or "",
             "product_category": itm.get("custom_hs_product_description") or  "",
@@ -234,8 +236,10 @@ def build_invoice_schema(doc, settings):
         "business_id": settings.business_id or "",
         "irn": doc.get("irn") or "",
         "issue_date": (doc.get("posting_date")) if doc.get("posting_date") else doc.get("issue_date") or "",
-        "invoice_type_code": doc.get("invoice_type_code") or "396",
+        "due_date": (doc.get("posting_date")) if doc.get("posting_date") else doc.get("issue_date") or "",
+        "invoice_type_code": doc.get("invoice_type_code") or "381",
         "document_currency_code": doc.get("currency") or "NGN",
+        "tax_currency_code": doc.get("currency") or "NGN",
         "accounting_supplier_party": supplier,
         "accounting_customer_party": customer,
         "tax_total": tax_total,
@@ -288,15 +292,14 @@ def build_qrcode_generator(data):
 # validation script
 def validate_firs_invoice_schema (self, invoice_payload, firs):
     # get the schema
-    invoice_payload = self.custom_firs_invoice_schema
-    """
-    """
+    
+    #invoice_payload = {"invoiceRequest": self.custom_firs_invoice_schema}
     """ 
         self.db_set("api_response", json.dumps(res_data, indent=4))
         frappe.msgprint("Invoice Validated Successfully", alert=True) """
 
     try: 
-        #invoice_payload = self.custom_invoice_schema
+        invoice_payload =  self.custom_firs_invoice_schema
         # get api
         api_key = firs.api_key or "YOUR_API_KEY"
         secret_key = firs.client_secret or "YOUR_SECRET_KEY"
@@ -320,8 +323,9 @@ def _build_headers(api_key: str, secret_key: str) -> Dict[str, str]:
         """
     return {
         "Content-Type": "application/json",
-        "X-API-KEY": api_key,
-        "X-SECRET-KEY": secret_key
+        "Accept": "application/json",
+        "x-api-key": api_key,
+        "x-api-secret": secret_key
     }
 
 def call_invoice_validation_api(payload: Dict[str, Any],
@@ -335,9 +339,10 @@ def call_invoice_validation_api(payload: Dict[str, Any],
     Returns a dict with keys: success (bool), status_code (int|None), response (dict|string), error (str|None)
     """
     base_url = base_url
-    url = base_url.rstrip("/") + VALIDATE_INVOICE_DATA
+    url = base_url.rstrip("/") +  VALIDATE_INVOICE_DATA
     headers = _build_headers(api_key, secret_key)
-    print(f"\n header : \n{headers}")
+    #print(f"\n header : \n{headers}")
+    #print(f"\n payload : \n {payload}")
 
     last_exception = None
     for attempt in range(1, retries + 2):  # retries attempts + initial
