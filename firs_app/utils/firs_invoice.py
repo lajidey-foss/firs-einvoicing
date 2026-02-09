@@ -58,8 +58,8 @@ def firs_work_flow_draft (doc, method):
     # encrypt_invoce_schema
     firs_encrypt_schema = encrypt_invoce_schema(doc.custom_firs_invoice_schema, firs_settings)
 
-    
-    validater_report = validate_firs_invoice_schema(doc,firs_encrypt_schema,firs_settings)
+    #validater_report = validate_firs_invoice_schema(doc,firs_encrypt_schema,firs_settings)
+    validater_report = validate_firs_invoice_schema(doc,firs_settings, invoice_schema_paylod)
     
     if next(iter(validater_report.values())) :
 
@@ -290,22 +290,22 @@ def build_qrcode_generator(data):
         return _file.file_url
 
 # validation script
-def validate_firs_invoice_schema (self, invoice_payload, firs):
+def validate_firs_invoice_schema (self, firs, payload):
     # get the schema
-    
-    #invoice_payload = {"invoiceRequest": self.custom_firs_invoice_schema}
-    """ 
-        self.db_set("api_response", json.dumps(res_data, indent=4))
-        frappe.msgprint("Invoice Validated Successfully", alert=True) """
+    #invoice_payload =  self.custom_firs_invoice_schema
+    #doc.db_set("custom_firs_invoice_schema", json.dumps(invoice_schema_paylod, indent=4))
+    invoice_payload = json.dumps({"invoiceRequest": payload}, indent=4)
+    # should invoice_payload be encrypt?
+    #payload_json = json.dumps(invoice_payload, ensure_ascii=False)
 
     try: 
-        invoice_payload =  self.custom_firs_invoice_schema
+        
         # get api
         api_key = firs.api_key or "YOUR_API_KEY"
         secret_key = firs.client_secret or "YOUR_SECRET_KEY"
 
         # call validation endpoint
-        validation_result = call_invoice_validation_api(invoice_payload, api_key, secret_key, firs.base_url)
+        validation_result = call_invoice_validation_api(payload, api_key, secret_key, firs.base_url)
 
         #save validation
         save_validation_result_to_doc(self.name, validation_result, fieldname=self.custom_irn_unix_timestamp)
@@ -361,6 +361,7 @@ def call_invoice_validation_api(payload: Dict[str, Any],
                 "response": resp_json,
                 "error": None
             }
+            print(f"\n==> response :{resp_json}")
             return result
 
         except requests.RequestException as exc:
