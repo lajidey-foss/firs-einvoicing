@@ -12,6 +12,9 @@ import qrcode
 from io import BytesIO
 import requests
 from typing import Dict, Any, Optional
+from frappe.utils import cstr, flt
+from collections import defaultdict
+
 
 VALIDATE_IRN = "/api/v1/invoice/irn/validate"
 VALIDATE_INVOICE_DATA = "/api/v1/invoice/validate"
@@ -44,15 +47,6 @@ def firs_work_flow_draft (doc, method):
 
     # Generate  QR Code
     generate_qr_code_path = build_qrcode_generator(doc)
-    #call auth before validation call
-    """
-    payload =
-    {
-    "email": "{{TAXPAYER_EMAIL}}",
-    "password": "{{TAXPAYER_PASSWORD}}"
-    }
-    custom_encrypted_irn_qr
-    """
     # call firs validation method ---- package_external_api_put
     # on success call do other stuff notify or create success log. --- POST base_url/api/v1/invoice/validate
     # encrypt_invoce_schema
@@ -211,19 +205,50 @@ def build_invoice_schema(doc, settings):
         })
 
     # tax_total and legal_monetary_total mapping
-    tax_total = [{
-        "tax_amount": doc.get("total_taxes_and_charges") or doc.get("tax_amount") or 0.0,
-        "tax_subtotal": [
-            {
-                "taxable_amount": doc.get("taxable_amount") or 0.0,
-                "tax_amount": doc.get("tax_amount") or 0.0,
-                "tax_category": {
-                    "id": "STANDARD_VAT",
-                    "percent": doc.get("tax_rate") or 7.5
+    # frm.doc.taxes[0].item_wise_tax_detail
+    # printtaxsection = get_tax_details(doc.get("taxes"), doc.get("taxes")) #get_invoice_summary(doc.get("items"), doc.get("taxes"))
+    tax_itemised = get_itemised_tax_breakup(doc)
+    tax_groups = {} #defaultdict(lambda: {'taxable_amount': 0.0, 'tax_amount': 0.0})
+    #tax_total = []
+    for entry  in tax_itemised:
+        taxable = entry.get('taxable_amount', 0.0)
+        for k, v in entry.items():
+            if k not in ('item', 'taxable_amount'):
+                if k not in tax_groups:
+                    tax_groups[k] = {'taxable_amount': 0.0, 'tax_amount': 0.0, 'percent': v.get('tax_rate')}
+                tax_groups[k]['taxable_amount'] += taxable
+                tax_groups[k]['tax_amount'] += v.get('tax_amount', 0.0)
+    
+    #for k, v in entry.items():
+    # Convert to list of tax_total entries 
+    tax_total = []
+    for tax_key, vals in tax_groups.items():
+        tax_total.append({
+            'tax_amount': round(vals['tax_amount'], 2),
+            'tax_subtotal': [{
+                'taxable_amount': round(vals['taxable_amount'], 2),
+                'tax_amount': round(vals['tax_amount'], 2),
+                'tax_category': {
+                    'id': tax_key,
+                    'percent':  round(vals['percent'], 1)
                 }
-            }
-        ]
-    }]
+            }]
+        })
+    
+
+
+
+    """ tax_total.append({
+                    "tax_amount": doc.get("total_taxes_and_charges") or doc.get("tax_amount") or 0.0,
+                    "tax_subtotal": [{
+                        "taxable_amount": taxised.get("taxable_amount") or 0.0,
+                        "tax_amount": v.get("tax_amount") or 0.0,
+                        "tax_category": {
+                            "id": "STANDARD_VAT",
+                            "percent": v.get("tax_rate") or 7.5
+                        }
+                    }]
+                }) """
 
     legal_monetary_total = {
         "line_extension_amount": doc.get("rounded_total") or doc.get("net_total") or 0.0,
@@ -250,6 +275,84 @@ def build_invoice_schema(doc, settings):
 
     return vch_payload
 
+def get_tax_details(itemx, taxex):
+    print(f"got here")
+    summary_data = frappe._dict()
+    print(f"\n==> frappe declaration :{summary_data}")
+    for tax in taxex: 
+        # include only VAT charges.
+        if tax.charge_type == "Actual":
+            continue
+
+        ## Charges to appear as items in the e-invoice.
+        if tax.charge_type in ["On Previous Row Total", "On Previous Row Amount"]:
+            print(f"\n==> if charges ")
+            reference_row = next((row for row in taxex if row.idx == int(tax.row_id or 0)), None)
+        
+
+        # check item tax rates if tax rate is zero
+        if tax.rate == 0:
+            print(f"\n==> item tax rate is zero")
+            for item in itemx:
+                item_tax_rate = item.item_tax_rate
+                if isinstance(item.item_tax_rate, str):
+                    item_tax_rate = json.loads(item.item_tax_rate)
+                if item_tax_rate and tax.account_head in item_tax_rate:
+                    key = cstr (item_tax_rate[tax.account_head])
+                    if key not in summary_data:
+                        summary_data.setdefault(
+                            key,
+							{
+								"tax_amount": 0.0,
+								"taxable_amount": 0.0,
+								"tax_exemption_reason": "",
+								"tax_exemption_law": "",
+							},
+                        )
+                    #
+                    summary_data[key]["tax_amount"] += item.tax_amount
+                    summary_data[key]["taxable_amount"] += item.net_amount
+                    if key == "0.0":
+                        #
+                        summary_data[key]["tax_exemption_reason"] = tax.tax_exemption_reason
+                        summary_data[key]["tax_exemption_law"] = tax.tax_exemption_law
+            if summary_data.get("0.0") and tax.charge_type in [
+                "On Previous Row Total",
+                "On Previous Row Amount",
+            ]:
+                summary_data[key]["taxable_amount"] = tax.total
+            if summary_data == {}:
+                summary_data.setdefault(
+                    "0.0",
+					{
+						"tax_amount": 0.0,
+						"taxable_amount": tax.total,
+						"tax_exemption_reason": tax.tax_exemption_reason,
+						"tax_exemption_law": tax.tax_exemption_law,
+					},
+                )
+        else:
+            # get
+            item_wise_tax_detail = json.loads(tax.item_wise_tax_detail)
+            for rate_item in [
+                tax_item for tax_item in item_wise_tax_detail.items() if tax_item[1][0] == tax.rate
+            ]:
+                key = cstr(tax.rate)
+                if not summary_data.get(key):
+                    summary_data.setdefault(key, {"tax_amount": 0.0, "taxable_amount": 0.0})
+                    summary_data[key]["tax_amount"] += rate_item[1][1]
+                    summary_data[key]["taxable_amount"] += sum(
+                        [item.net_amount for item in itemx if item.item_code == rate_item[0]]
+                    )
+            for item in itemx:
+                key = cstr(tax.rate)
+                if item.get("charges"):
+                    if not summary_data.get(key):
+                        summary_data.setdefault(key, {"taxable_amount": 0.0})
+                    summary_data[key]["taxable_amount"] += item.taxable_amount
+    return summary_data
+
+
 def build_qrcode_generator(data):
     # if data.custom_qr_code_image or not data.custom_qr_code_image == "" or not data.custom_qr_code_image is None :
 
@@ -273,7 +376,7 @@ def build_qrcode_generator(data):
 
         if existing_file_url:
             #frappe.db.delete("File", {"file_url": existing_file_url, "attached_to_name": self.name})
-            print(f"here")
+            #print(f"=========================here==========================")
             frappe.db.delete("File", {"file_url": existing_file_url, "attached_to_name": data.name})
         
         _file = frappe.get_doc({
@@ -287,7 +390,7 @@ def build_qrcode_generator(data):
         _file.save()
 
         data.db_set("custom_encrypted_qr_image", _file.file_url, update_modified=False)
-        print(f"\n\n ===================> {_file.file_url}")
+        #print(f"\n\n ===================> {_file.file_url}")
         return _file.file_url
 
 # validation script
@@ -348,7 +451,7 @@ def call_invoice_validation_api(payload: Dict[str, Any],
     last_exception = None
     for attempt in range(1, retries + 2):  # retries attempts + initial
         try:
-            print(f"\n==> atempt :{attempt}")
+            #print(f"\n==> atempt :{attempt}")
             resp = requests.post(url, json=payload, headers=headers, timeout=timeout)
             # Try to parse JSON response, fallback to text
             try:
@@ -362,7 +465,7 @@ def call_invoice_validation_api(payload: Dict[str, Any],
                 "response": resp_json,
                 "error": None
             }
-            print(f"\n==> response :{resp_json}")
+            # ! print(f"\n==> response :{resp_json}")
             return result
 
         except requests.RequestException as exc:
@@ -467,7 +570,7 @@ def call_invoice_signing_api(payload: Dict[str, Any],
                 "response": resp_json,
                 "error": None
             }
-            print(f"\n==> submit response :{resp_json}")
+            # ! print(f"\n==> submit response :{resp_json}")
             return result
 
         except requests.RequestException as exc:
@@ -488,17 +591,6 @@ def call_invoice_signing_api(payload: Dict[str, Any],
     }
 
 def save_sign_result_to_doc(invoice_name:str, validation_result:Dict[str, Any], fieldname: str ):
-    """
-    Docstring for save_validation_result_to_doc
-    
-    :param invoice_name: Description
-    :type invoice_name: str
-    :param validation_result: Description
-    :type validation_result: Dict[str, Any]
-
-    Persitst the validation result JSON 
-    uses db.set_value to avoid triggering document events again.
-    """
 
     try:
         payload_to_save ={
@@ -512,3 +604,111 @@ def save_sign_result_to_doc(invoice_name:str, validation_result:Dict[str, Any], 
         frappe.db.commit()
     except Exception:
         frappe.log_error(frappe.get_traceback(), "save_sign_result_to_doc error")
+
+# tax break up section
+def get_itemised_tax_breakup_html(doc):
+	if not doc.taxes:
+		return
+	# get headers  
+	tax_accounts = [] #itemised_tax_data = get_itemised_tax_breakup_data(doc) # get_rounded_tax_amount(itemised_tax_data, doc.precision("tax_amount", "taxes"))
+     
+	for tax in doc.taxes:
+		if getattr(tax, "category", None) and tax.category == "Valuation":
+			continue
+		if tax.description not in tax_accounts:
+			tax_accounts.append(tax.description) 
+	itemised_tax_data = get_itemised_tax_breakup_data(doc)
+	get_rounded_tax_amount(itemised_tax_data, doc.precision("tax_amount", "taxes"))
+
+def get_itemised_tax_breakup(doc):
+    if not doc.taxes:
+        return
+    
+	
+    
+    
+    # get headers  
+	
+    tax_accounts = [] #itemised_tax_data = get_itemised_tax_breakup_data(doc) # get_rounded_tax_amount(itemised_tax_data, doc.precision("tax_amount", "taxes"))
+     
+	
+    for tax in doc.taxes:
+		
+        if getattr(tax, "category", None) and tax.category == "Valuation":
+			
+            continue
+		
+        if tax.description not in tax_accounts:
+			
+            tax_accounts.append(tax.description) 
+	
+    itemised_tax_data = get_itemised_tax_breakup_data(doc)
+	
+    get_rounded_tax_amount(itemised_tax_data, doc.precision("tax_amount", "taxes"))
+    print(f"\n\n ======= got get_itemised_tax_breakup ")
+    print(f"\n checker : {itemised_tax_data} \n")
+    return itemised_tax_data
+
+
+
+def get_itemised_tax_breakup_data(doc):
+	itemised_tax = get_itemised_tax(doc.taxes)
+
+	itemised_taxable_amount = get_itemised_taxable_amount(doc.items)
+
+	itemised_tax_data = []
+	for item_code, taxes in itemised_tax.items():
+		itemised_tax_data.append(
+			frappe._dict(
+				{"item": item_code, "taxable_amount": itemised_taxable_amount.get(item_code, 0), **taxes}
+			)
+		)
+
+	return itemised_tax_data
+
+
+def get_itemised_tax(taxes, with_tax_account=False):
+	itemised_tax = {}
+	for tax in taxes:
+		if getattr(tax, "category", None) and tax.category == "Valuation":
+			continue
+
+		item_tax_map = json.loads(tax.item_wise_tax_detail) if tax.item_wise_tax_detail else {}
+		if item_tax_map:
+			for item_code, tax_data in item_tax_map.items():
+				itemised_tax.setdefault(item_code, frappe._dict())
+
+				tax_rate = 0.0
+				tax_amount = 0.0
+
+				if isinstance(tax_data, list):
+					tax_rate = flt(tax_data[0])
+					tax_amount = flt(tax_data[1])
+				else:
+					tax_rate = flt(tax_data)
+
+				itemised_tax[item_code][tax.description] = frappe._dict(
+					dict(tax_rate=tax_rate, tax_amount=tax_amount)
+				)
+
+				if with_tax_account:
+					itemised_tax[item_code][tax.description].tax_account = tax.account_head
+
+	return itemised_tax
+
+
+def get_itemised_taxable_amount(items):
+	itemised_taxable_amount = frappe._dict()
+	for item in items:
+		item_code = item.item_code or item.item_name
+		itemised_taxable_amount.setdefault(item_code, 0)
+		itemised_taxable_amount[item_code] += item.net_amount
+
+	return itemised_taxable_amount
+
+def get_rounded_tax_amount(itemised_tax, precision):
+	# Rounding based on tax_amount precision
+	for taxes in itemised_tax:
+		for row in taxes.values():
+			if isinstance(row, dict) and isinstance(row["tax_amount"], float):
+				row["tax_amount"] = flt(row["tax_amount"], precision)
