@@ -30,7 +30,6 @@ def firs_work_flow_draft (doc, method):
     # check if needed
     if not firs_settings.enabled: # frappe.db.get_single_value('FIRS Einvoice Settings', 'enabled'):
         return
-    #coy = frappe.get_doc('Company', doc.company)
 
     # set  IRN & UNIX TIMESTAMP 
     irn_val = f"{doc.name}-{get_service_id(firs_settings)}-{get_unix_timestamp(doc.posting_date)}"
@@ -52,16 +51,19 @@ def firs_work_flow_draft (doc, method):
     # encrypt_invoce_schema
     firs_encrypt_schema = encrypt_invoce_schema(doc.custom_firs_invoice_schema, firs_settings)
 
-    #validater_report = validate_firs_invoice_schema(doc,firs_encrypt_schema,firs_settings)
+    # check if validation should happened
+    if not firs_settings.invoice_update_frequency == 'Per Transaction':
+        print(f"===========================================\n  *********Ended Cycle********\n ")
+        return
+    
+    print(f"===========================================> \n **********Process*******\n ")
     validater_report = validate_firs_invoice_schema(doc,firs_settings, invoice_schema_paylod)
     
     if next(iter(validater_report.values())) :
 
         print(f"\n ============{next(iter(validater_report.values())) }==========> \n report to : {list(validater_report.values())[3]}")
 
-
-
-    #temp fix to submit and sign firs without doc submit on frappe
+    #temp fix: --> move to on_submit or after_submit to sign with firs server
     submit_sign(doc,firs_settings, invoice_schema_paylod)
 
 
@@ -69,7 +71,7 @@ def firs_work_flow_draft (doc, method):
 def get_unix_timestamp(pdate):
     uxtime = int(time.time())
     pdate = pdate.replace("-", "")
-    result = f"{pdate}" #f"{pdate}.{str(uxtime)}"
+    result = f"{pdate}.{str(uxtime)}" #f"{pdate}" 
     #print(f"\n\n ========unix date & timestamp ===========> {result}")
     return result
 
@@ -167,7 +169,7 @@ def build_invoice_schema(doc, settings):
         "tin": val_customer.tax_id or "",
         "email": val_customer.custom_email or "",
         "telephone": val_customer.custom_phone or "",
-        "business_description":  "This entity is a sub saller of CBM",
+        "business_description": val_customer.custom_business_description or "This entity is a sub saller of CBM",
         "postal_address": {
             "street_name": customer_address.address_line1 or "",
             "city_name": customer_address.city or "",
@@ -184,7 +186,7 @@ def build_invoice_schema(doc, settings):
         # print(f"get item : {myitem}")
         itm = frappe.get_doc('Item', item.get("item_code"))
         invoice_lines.append({
-            "hsn_code": itm.get("custom_hs_code") or "",
+            "hsn_code": itm.get("custom_hs_code") if itm.custom_firs_item_type == f"Product" else itm.get("custom_firs_service_code"),
             "product_category": itm.get("custom_hs_product_description") or  "",
             "discount_rate": item.get("discount_percentage") or 0.0,
             "discount_amount": item.get("discount_amount") or 0.0,
