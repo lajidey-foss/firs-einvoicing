@@ -68,10 +68,11 @@
    "label": "Business Information"
   },
   {
-   "bold": 1,
    "fieldname": "phone_number",
    "fieldtype": "Phone",
-   "label": "Phone Number"
+   "hidden": 1,
+   "label": "Phone Number",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_vdii",
@@ -232,7 +233,7 @@
    "fieldname": "invoice_update_frequency",
    "fieldtype": "Select",
    "label": "Invoice Update Frequency",
-   "options": "Each Transaction\nBulk Background"
+   "options": "\nBackground Job\nEOD Batching\nPer Transaction"
   },
   {
    "fieldname": "get_currencies",
@@ -306,6 +307,7 @@
    "label": "Process key"
   },
   {
+   "bold": 1,
    "fieldname": "phone_details",
    "fieldtype": "Data",
    "label": "Phone Details"
@@ -315,7 +317,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-01-29 14:27:04.800995",
+ "modified": "2026-03-07 22:14:20.774825",
  "modified_by": "Administrator",
  "module": "Firs App",
  "name": "FIRS Einvoice Settings",
