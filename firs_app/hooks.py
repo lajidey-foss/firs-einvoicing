@@ -44,6 +44,7 @@ app_license = "mit"
 
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {"Sales Invoice" : "utils/firs_invoice.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -273,7 +274,10 @@ fixtures = [
                     "Sales Invoice-custom_encrypted_irn_qr",
                     "Sales Invoice-custom_irn_unix_timestamp",
                     "Sales Invoice-custom_firs_invoice_schema",
-                    "Sales Invoice-custom_encrypted_qr_image"
+                    "Sales Invoice-custom_encrypted_qr_image",
+                    "Sales Invoice Item-custom_firs_vat",
+                    "Sales Invoice Item-custom_vat_inclusive_rate",
+                    "Sales Invoice Item-custom_vat_inclusive_amount"
                 )
             ]
         ]
