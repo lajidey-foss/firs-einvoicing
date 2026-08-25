@@ -138,18 +138,27 @@ doctype_js = {"Sales Invoice" : "utils/firs_invoice.js"}
 # ---------------
 # Hook on document methods and events
 #"on_submit": "firs_app.utils.firs_invoice.submit_sign"
+#"on_update": "firs_app.utils.firs_invoice.firs_work_flow_draft"
+#"on_update": "firs_app.utils.firs_invoice.create_firs_einvoice"
 
 doc_events = {
     "Sales Invoice": {
-        "on_update": "firs_app.utils.firs_invoice.firs_work_flow_draft"
+        "on_submit": "firs_app.utils.firs_invoice.create_firs_einvoice",
+        "on_update_after_submit": "firs_app.utils.firs_invoice.update_firs_einvoice",
+        "on_cancel": "firs_app.utils.firs_invoice.update_firs_einvoice"
         
     }
 }
 
 # Scheduled Tasks
 # ---------------
-
-# scheduler_events = {
+# Runs every 15 minutes
+scheduler_events = {
+    "cron": {
+        "*/15 * * * *":[
+            "firs_app.utils.firs_invoice.process_einvoice_job"
+        ]
+    }
 # 	"all": [
 # 		"firs_app.tasks.all"
 # 	],
@@ -165,7 +174,7 @@ doc_events = {
 # 	"monthly": [
 # 		"firs_app.tasks.monthly"
 # 	],
-# }
+}
 
 # Testing
 # -------

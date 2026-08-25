@@ -1,0 +1,227 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:irn_unix_timestamp",
+ "creation": "2026-07-31 16:28:11.468299",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "irn_unix_timestamp",
+  "sales_invoice_code",
+  "sales_invoice_status",
+  "sales_invoice",
+  "firs_status",
+  "irn",
+  "payment_status",
+  "last_validation_response",
+  "column_break_qauq",
+  "encrypted_qr_image",
+  "encrypted_irn_qr",
+  "firs_invoice_schema",
+  "section_break_axeg",
+  "has_been_streamed",
+  "is_cancelled",
+  "last_signing_response",
+  "last_patch_response",
+  "last_sync_at",
+  "column_break_dlbk",
+  "sync_status",
+  "response_log",
+  "last_error"
+ ],
+ "fields": [
+  {
+   "bold": 1,
+   "fieldname": "irn_unix_timestamp",
+   "fieldtype": "Data",
+   "label": "IRN UNIX TimeStamp",
+   "unique": 1
+  },
+  {
+   "fieldname": "encrypted_irn_qr",
+   "fieldtype": "JSON",
+   "label": "Encrypted IRN QR",
+   "read_only": 1
+  },
+  {
+   "fieldname": "encrypted_qr_image",
+   "fieldtype": "Attach Image",
+   "label": "Encrypted QR Image"
+  },
+  {
+   "fieldname": "firs_invoice_schema",
+   "fieldtype": "JSON",
+   "label": "FIRS Invoice Schema",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_qauq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_axeg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "sales_invoice_status",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Sales Invoice Status"
+  },
+  {
+   "default": "0",
+   "fieldname": "has_been_streamed",
+   "fieldtype": "Check",
+   "label": "Has Been Streamed"
+  },
+  {
+   "fieldname": "column_break_dlbk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "response_log",
+   "fieldtype": "Code",
+   "label": "Response Log"
+  },
+  {
+   "fieldname": "sales_invoice_code",
+   "fieldtype": "Data",
+   "label": "Sales Invoice Code"
+  },
+  {
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "label": "Sales Invoice",
+   "options": "Sales Invoice"
+  },
+  {
+   "fieldname": "firs_status",
+   "fieldtype": "Data",
+   "label": "Firs Status"
+  },
+  {
+   "fieldname": "irn",
+   "fieldtype": "Data",
+   "label": "IRN"
+  },
+  {
+   "fieldname": "payment_status",
+   "fieldtype": "Data",
+   "label": "Payment Status"
+  },
+  {
+   "fieldname": "last_validation_response",
+   "fieldtype": "JSON",
+   "label": "Last Validation Response"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_cancelled",
+   "fieldtype": "Check",
+   "label": "Is Cancelled"
+  },
+  {
+   "fieldname": "last_signing_response",
+   "fieldtype": "JSON",
+   "label": "Last Signing Response"
+  },
+  {
+   "fieldname": "last_patch_response",
+   "fieldtype": "JSON",
+   "label": "Last Patch Response"
+  },
+  {
+   "fieldname": "last_sync_at",
+   "fieldtype": "Datetime",
+   "label": "Last Sync At"
+  },
+  {
+   "fieldname": "sync_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Sync Status",
+   "options": "Not Started\nPending Validation\nPending Update\nSigned\nFailed"
+  },
+  {
+   "fieldname": "last_error",
+   "fieldtype": "Long Text",
+   "label": "Last Error"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-23 02:59:00.467728",
+ "modified_by": "Administrator",
+ "module": "Firs App",
+ "name": "FIRS EInvoice",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales Master Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
