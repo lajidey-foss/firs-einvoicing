@@ -20,6 +20,7 @@ VALIDATE_IRN = "/api/v1/invoice/irn/validate"
 VALIDATE_INVOICE_DATA = "/api/v1/invoice/validate"
 SIGN_INVOICE_SCHEMA = "/api/v1/invoice/sign"
 AUTH_PATH = "/api/v1/utilities/authenticate"
+UPDATE_EINVOICE = "/api/v1/invoice/update"
 REQUEST_TIMEOUT = 15 # seconds 
 RETRY_COUNT = 2 
 RETRY_DELAY = 2 # seconds
@@ -32,7 +33,7 @@ def firs_work_flow_draft (doc, method):
         return
 
     # set  IRN & UNIX TIMESTAMP 
-    irn_val = f"{doc.name}-{get_service_id(firs_settings)}-{get_unix_timestamp(doc.posting_date)}"
+    irn_val = f"{revamp_vch_name(doc.name)}-{get_service_id(firs_settings)}-{get_unix_timestamp(doc.posting_date)}"
     doc.db_set("custom_irn_unix_timestamp", irn_val)
 
     # Generate FIR Encrypted QR Data
@@ -51,20 +52,121 @@ def firs_work_flow_draft (doc, method):
     # encrypt_invoce_schema
     firs_encrypt_schema = encrypt_invoce_schema(doc.custom_firs_invoice_schema, firs_settings)
 
+    
+    # this has to go into a new different logic downwards
     # check if validation should happened
     if not firs_settings.invoice_update_frequency == 'Per Transaction':
         print(f"===========================================\n  *********Ended Cycle********\n ")
         return
+    # wrong way of writing a code logic
     
     print(f"===========================================> \n **********Process*******\n ")
-    validater_report = validate_firs_invoice_schema(doc,firs_settings, invoice_schema_paylod)
+    """ validater_report = validate_firs_invoice_schema(doc,firs_settings, invoice_schema_paylod)
     
     if next(iter(validater_report.values())) :
 
         print(f"\n ============{next(iter(validater_report.values())) }==========> \n report to : {list(validater_report.values())[3]}")
-
+ """
     #temp fix: --> move to on_submit or after_submit to sign with firs server
-    submit_sign(doc,firs_settings, invoice_schema_paylod)
+    #submit_sign(doc,firs_settings, invoice_schema_paylod)
+    
+def create_firs_einvoice(doc, method):
+     """ Background create new firs_einvoice doc form doc """
+     frappe.enqueue(
+          "firs_app.utils.firs_invoice.sync_sales_invoice_to_einvoice",
+          queue="long",
+          doc=doc,
+          action="create"
+     )
+
+
+def update_firs_einvoice(doc, method):
+     """Updates in background queue when relevant lifecycle changes occur."""
+     frappe.enqueue(
+          "firs_app.utils.firs_invoice.sync_sales_invoice_to_einvoice",
+          queue="long",
+          doc=doc,
+          action="update"
+     )
+
+
+def sync_sales_invoice_to_einvoice(doc, action="create"):
+     """Creates a FIRS invoice record and updates it only for relevant triggers."""
+     if not doc or not getattr(doc, "name", None):
+          return
+
+     firs_settings = frappe.get_doc('FIRS Einvoice Settings')
+     if not firs_settings.enabled:
+          return
+
+     if action == "create":
+          if frappe.db.exists("firs_einvoice", {"sales_invoice_code": doc.name}):
+               return
+
+          irn_val = f"{revamp_vch_name(doc.name)}-{get_service_id(firs_settings)}-{get_unix_timestamp(doc.posting_date)}"
+          firs_encrypt_qr_data = encrypt_qrcode(irn_val, firs_settings)
+
+          invoice_schema_paylod = build_invoice_schema(doc, firs_settings)
+          invoice_schema_paylod["irn"] = irn_val
+
+          firs_doc = frappe.get_doc({
+               "doctype": "FIRS EInvoice",
+               "sales_invoice": doc.name,
+               "sales_invoice_code": doc.name,
+               "irn": irn_val,
+               "irn_unix_timestamp": irn_val,
+               "encrypted_irn_qr": json.dumps(firs_encrypt_qr_data),
+               "firs_invoice_schema": json.dumps(invoice_schema_paylod, indent=4),
+               "sales_invoice_status": doc.status,
+               "payment_status": doc.status,
+               "status": "Pending Validation",
+               "sync_status": "Pending Validation",
+               "last_sync_at": frappe.utils.now(),
+               "is_cancelled": 0
+          })
+          firs_doc.insert(ignore_permissions=True)
+          frappe.db.commit()
+
+          build_qrcode_generator(firs_doc)
+          return
+
+     if action != "update":
+          return
+
+     current_status = (doc.status or "").strip().lower()
+     previous_status = ""
+     if hasattr(doc, "get_doc_before_save"):
+          prev_doc = doc.get_doc_before_save()
+          previous_status = (getattr(prev_doc, "status", "") or "").strip().lower()
+
+     firs_name = frappe.db.get_value("firs_einvoice", {"sales_invoice_code": doc.name}, "name")
+     if not firs_name:
+          return
+
+     firs_doc = frappe.get_doc("firs_einvoice", firs_name)
+     firs_doc.sales_invoice = doc.name
+     firs_doc.sales_invoice_status = doc.status
+     firs_doc.payment_status = doc.status
+
+     # Trigger only when invoice is cancelled or moves to Paid from any other state.
+     is_cancelled = doc.docstatus == 2
+     is_paid_transition = current_status == "paid" and previous_status != "paid"
+
+     if not (is_cancelled or is_paid_transition):
+          return
+
+     firs_doc.status = "Pending Update"
+     firs_doc.sync_status = "Pending Update"
+     firs_doc.is_cancelled = 1 if is_cancelled else 0
+     firs_doc.response_log = json.dumps({
+          "trigger": "sales_invoice_cancelled" if is_cancelled else "status_changed_to_paid",
+          "previous_status": previous_status,
+          "current_status": current_status,
+          "saved_at": frappe.utils.now()
+     }, indent=4)
+
+     firs_doc.save(ignore_permissions=True)
+     frappe.db.commit()
 
 
 
@@ -74,6 +176,11 @@ def get_unix_timestamp(pdate):
     result = f"{pdate}.{str(uxtime)}" #f"{pdate}" 
     #print(f"\n\n ========unix date & timestamp ===========> {result}")
     return result
+
+def revamp_vch_name(si):
+     si = si.replace("-", "")
+     result = f"{si}"
+     return result
 
 def get_service_id(settings):
     firs_service_id = settings.service_id
@@ -101,6 +208,24 @@ def encrypt_qrcode(irn,settings):
     #print(f"\n\n plain: ====================> {encrypted}")
 
     return encrypted_base64
+
+def process_einvoice_job():
+     """Main loop executing via Frappe scheduler."""
+     pending_validation = frappe.get_all(
+          "FIRS EInvoice",
+          filters={"status": "Pending Validation"},
+          pluck="name"
+     )
+     for firs_name in pending_validation:
+          execute_validation_and_sign(frappe.get_doc("FIRS EInvoice", firs_name))
+
+     pending_updates = frappe.get_all(
+          "FIRS EInvoice",
+          filters={"sync_status": "Pending Update"},
+          pluck="name"
+     )
+     for firs_name in pending_updates:
+          execute_einvoice_patch_update(frappe.get_doc("FIRS EInvoice", firs_name))
 
 def encrypt_invoce_schema(data, settings):
     
@@ -274,6 +399,8 @@ def build_invoice_schema(doc, settings):
         "legal_monetary_total": legal_monetary_total,
         "invoice_line": invoice_lines
     }
+    if doc.get("status") == "Paid":
+         vch_payload["payment_status"] = "PAID"
 
     return vch_payload
 
@@ -358,12 +485,13 @@ def get_tax_details(itemx, taxex):
 def build_qrcode_generator(data):
     # if data.custom_qr_code_image or not data.custom_qr_code_image == "" or not data.custom_qr_code_image is None :
 
-    if data.custom_encrypted_irn_qr:
+    if data.encrypted_irn_qr:
+        # custom_encrypted_irn_qr
         # custom_encrypted_qr_data
-        existing_file_url = data.custom_encrypted_qr_image
+        existing_file_url = data.encrypted_qr_image
         
         qr = qrcode.QRCode(version=1, box_size=10, border=5)
-        qr.add_data(data.custom_encrypted_irn_qr)
+        qr.add_data(data.encrypted_irn_qr)
         qr.make(fit=True)
 
         img = qr.make_image(fill_color="black", back_color="white")
@@ -376,10 +504,8 @@ def build_qrcode_generator(data):
         file_name = f"QR_{data.name}.png"
         #print(f"\n\n ===================> {file_name}")
 
-        if existing_file_url:
-            #frappe.db.delete("File", {"file_url": existing_file_url, "attached_to_name": self.name})
-            #print(f"=========================here==========================")
-            frappe.db.delete("File", {"file_url": existing_file_url, "attached_to_name": data.name})
+        """ if existing_file_url:
+            frappe.db.delete("File", {"file_url": existing_file_url, "attached_to_name": data.name}) """
         
         _file = frappe.get_doc({
             "doctype": "File",
@@ -391,17 +517,16 @@ def build_qrcode_generator(data):
         })
         _file.save()
 
-        data.db_set("custom_encrypted_qr_image", _file.file_url, update_modified=False)
+        data.db_set("encrypted_qr_image", _file.file_url, update_modified=False)
         #print(f"\n\n ===================> {_file.file_url}")
         return _file.file_url
 
 # validation script
-def validate_firs_invoice_schema (self, firs, payload):
+def validate_firs_invoice_schema (firs, payload):
     # get the schema
     #invoice_payload =  self.custom_firs_invoice_schema
     #doc.db_set("custom_firs_invoice_schema", json.dumps(invoice_schema_paylod, indent=4))
     invoice_payload = json.dumps({"invoiceRequest": payload}, indent=4)
-    # should invoice_payload be encrypt?
     #payload_json = json.dumps(invoice_payload, ensure_ascii=False)
 
     try: 
@@ -414,15 +539,16 @@ def validate_firs_invoice_schema (self, firs, payload):
         validation_result = call_invoice_validation_api(payload, api_key, secret_key, firs.base_url)
 
         #save validation
-        save_validation_result_to_doc(self.name, validation_result, fieldname=self.custom_irn_unix_timestamp)
+        # a rewiring of this block of code
+        #save_validation_result_to_doc(self.name, validation_result, fieldname=self.custom_irn_unix_timestamp)
         #remove below just for report to user
         return validation_result
     except Exception:
         # log and persist error info for troubleshooting
         frappe.log_error(frappe.get_traceback(), "validate_firs_invoice_schema error")
         #custom_valation_data
-        frappe.db.set_value("Firs Syn", self.custom_irn_unix_timestamp, "api_response", json.dumps({"error": "validation_failed"}), update_modified=True)
-        frappe.db.commit()
+        #frappe.db.set_value("Firs Syn", self.custom_irn_unix_timestamp, "api_response", json.dumps({"error": "validation_failed"}), update_modified=True)
+        #frappe.db.commit()
 
 def _build_headers(api_key: str, secret_key: str) -> Dict[str, str]:
     """Return headers required by the external API.
@@ -534,7 +660,9 @@ def submit_sign(self,firs_settings, schema_paylod):
         sign_result = call_invoice_signing_api(schema_paylod, api_key, secret_key, firs_settings.base_url)
 
         #save validation
-        save_sign_result_to_doc(self.name, sign_result, fieldname=self.custom_irn_unix_timestamp)
+        # remove this logic / as fir_sync doctype is going to be abandon
+        #save_sign_result_to_doc(self.name, sign_result, fieldname=self.custom_irn_unix_timestamp)
+        return sign_result
     except Exception:
         # log and persist error info for troubleshooting
         frappe.log_error(frappe.get_traceback(), "validate_firs_invoice_schema error")
@@ -552,7 +680,14 @@ def call_invoice_signing_api(payload: Dict[str, Any],
     Call external POST /api/v1/invoice/validate with JSON payload and headers.
     Returns a dict with keys: success (bool), status_code (int|None), response (dict|string), error (str|None)
     """
-    base_url = base_url
+    if not base_url:
+        return {
+            "success": False,
+            "status_code": None,
+            "response": None,
+            "error": "Base URL is missing"
+        }
+    #base_url = base_url
     url = base_url.rstrip("/") + SIGN_INVOICE_SCHEMA
     headers = _build_headers(api_key, secret_key)
 
@@ -585,6 +720,68 @@ def call_invoice_signing_api(payload: Dict[str, Any],
 
     # If we reach here, all attempts failed
     frappe.log_error(frappe.get_traceback(), "call_invoice_validation_api error")
+    return {
+        "success": False,
+        "status_code": None,
+        "response": None,
+        "error": str(last_exception) if last_exception else "unknown error"
+    }
+
+
+def call_invoice_update_api(irn: str,
+                           payment_status: str,
+                           api_key: str,
+                           secret_key: str,
+                           base_url: Optional[str] = None,
+                           reference: Optional[str] = None,
+                           timeout: int = REQUEST_TIMEOUT,
+                           retries: int = RETRY_COUNT) -> Dict[str, Any]:
+    """Call PATCH /api/v1/invoice/update/{irn} for payment state changes."""
+    if not irn:
+        return {
+            "success": False,
+            "status_code": None,
+            "response": None,
+            "error": "IRN is missing"
+        }
+
+    if not base_url:
+        return {
+            "success": False,
+            "status_code": None,
+            "response": None,
+            "error": "Base URL is missing"
+        }
+
+    url = base_url.rstrip("/") + f"{UPDATE_EINVOICE}/{irn}"
+    headers = _build_headers(api_key, secret_key)
+    payload = {"payment_status": payment_status.upper()}
+    if reference:
+        payload["reference"] = reference
+
+    last_exception = None
+    for attempt in range(1, retries + 2):
+        try:
+            resp = requests.patch(url, json=payload, headers=headers, timeout=timeout)
+            try:
+                resp_json = resp.json()
+            except ValueError:
+                resp_json = resp.text
+
+            return {
+                "success": resp.ok,
+                "status_code": resp.status_code,
+                "response": resp_json,
+                "error": None if resp.ok else (resp_json if isinstance(resp_json, str) else json.dumps(resp_json, default=str))
+            }
+        except requests.RequestException as exc:
+            last_exception = exc
+            if attempt <= retries:
+                time.sleep(RETRY_DELAY)
+            else:
+                break
+
+    frappe.log_error(frappe.get_traceback(), "call_invoice_update_api error")
     return {
         "success": False,
         "status_code": None,
@@ -625,10 +822,6 @@ def get_itemised_tax_breakup_html(doc):
 def get_itemised_tax_breakup(doc):
     if not doc.taxes:
         return
-    
-	
-    
-    
     # get headers  
 	
     tax_accounts = [] #itemised_tax_data = get_itemised_tax_breakup_data(doc) # get_rounded_tax_amount(itemised_tax_data, doc.precision("tax_amount", "taxes"))
@@ -650,8 +843,6 @@ def get_itemised_tax_breakup(doc):
     print(f"\n\n ======= got get_itemised_tax_breakup ")
     print(f"\n checker : {itemised_tax_data} \n")
     return itemised_tax_data
-
-
 
 def get_itemised_tax_breakup_data(doc):
 	itemised_tax = get_itemised_tax(doc.taxes)
@@ -714,3 +905,193 @@ def get_rounded_tax_amount(itemised_tax, precision):
 		for row in taxes.values():
 			if isinstance(row, dict) and isinstance(row["tax_amount"], float):
 				row["tax_amount"] = flt(row["tax_amount"], precision)
+                   
+
+def execute_validation_and_sign(data):
+     """Validate and sign a pending FIRS invoice."""
+     if not data or data.status != "Pending Validation":
+          return
+
+     firs_settings = frappe.get_doc('FIRS Einvoice Settings')
+     if not firs_settings.enabled:
+          return
+
+     try:
+          payload = json.loads(data.firs_invoice_schema or "{}")
+          if not payload:
+               data.db_set({
+                    "status": "Failed Validation",
+                    "sync_status": "Failed",
+                    "last_error": "Missing invoice schema",
+                    "response_log": json.dumps({"error": "Missing invoice schema", "saved_at": frappe.utils.now()}, indent=4)
+               }, update_modified=False)
+               frappe.db.commit()
+               return
+
+          val_response = validate_firs_invoice_schema(firs_settings, payload)
+          data.last_validation_response = json.dumps(val_response, indent=4) if val_response else None
+          if not val_response or val_response.get("status_code") not in [200, 201]:
+               data.db_set({
+                    "status": "Failed Validation",
+                    "sync_status": "Failed",
+                    "last_error": val_response.get("error") if val_response else "Validation failed",
+                    "last_validation_response": json.dumps(val_response, indent=4) if val_response else json.dumps({"error": "Validation failed"}, indent=4),
+                    "response_log": json.dumps({
+                         "validation_result": val_response.get("error") or val_response.get("message") or val_response,
+                         "saved_at": frappe.utils.now()
+                    }, indent=4)
+               }, update_modified=False)
+               frappe.db.commit()
+               return
+
+          sign_response = submit_sign(firs_settings, payload)
+          data.last_signing_response = json.dumps(sign_response, indent=4) if sign_response else None
+          if sign_response and sign_response.get("success"):
+               response_data = sign_response.get("response", {})
+               sales_invoice_name = data.sales_invoice or data.sales_invoice_code
+               if sales_invoice_name and data.irn:
+                    frappe.db.set_value(
+                         "Sales Invoice",
+                         sales_invoice_name,
+                         "custom_irn_unix_timestamp",
+                         data.irn,
+                         update_modified=False
+                    )
+               data.db_set({
+                    "status": "Signed",
+                    "sync_status": "Synced",
+                    "last_signing_response": json.dumps(sign_response, indent=4),
+                    "last_sync_at": frappe.utils.now(),
+                    "last_error": "",
+                    "response_log": json.dumps(response_data, indent=4)
+               }, update_modified=False)
+               frappe.db.commit()
+               return
+
+          data.db_set({
+               "status": "Failed Validation",
+               "sync_status": "Failed",
+               "last_error": (sign_response.get("error") if sign_response else "Signing failed") or "Signing failed",
+               "last_signing_response": json.dumps(sign_response, indent=4) if sign_response else json.dumps({"error": "Signing failed"}, indent=4),
+               "response_log": json.dumps({
+                    "validation_result": "Validation passed, but signing failed.",
+                    "signing_error": sign_response.get("error") or sign_response,
+                    "saved_at": frappe.utils.now()
+               }, indent=4)
+          }, update_modified=False)
+          frappe.db.commit()
+
+     except Exception:
+          frappe.log_error(frappe.get_traceback(), "FIRS EInoice Sign Error")
+          data.db_set({
+               "status": "Failed Validation",
+               "sync_status": "Failed",
+               "last_error": frappe.get_traceback(),
+               "response_log": json.dumps({
+                    "validation_result": "System Exception",
+                    "error": frappe.get_traceback(),
+                    "saved_at": frappe.utils.now()
+               }, indent=4)
+          }, update_modified=False)
+          frappe.db.commit()
+
+
+def execute_einvoice_patch_update(firs_doc):
+     """Patch a previously signed invoice when payment status changes to PAID or REJECTED."""
+     if not firs_doc:
+          return
+
+     if firs_doc.status not in ["Pending Update", "Cancelled"] and firs_doc.sync_status != "Pending Update":
+          return
+
+     sales_invoice_code = firs_doc.sales_invoice_code or firs_doc.sales_invoice
+     if not sales_invoice_code:
+          return
+
+     sales_invoice = frappe.get_doc("Sales Invoice", sales_invoice_code)
+     if not sales_invoice:
+          firs_doc.db_set({
+               "status": "Failed Validation",
+               "sync_status": "Failed",
+               "last_error": "Sales Invoice not found",
+               "response_log": json.dumps({"error": "Sales Invoice not found", "saved_at": frappe.utils.now()}, indent=4)
+          }, update_modified=False)
+          frappe.db.commit()
+          return
+
+     firs_settings = frappe.get_doc('FIRS Einvoice Settings')
+     if not firs_settings.enabled:
+          return
+
+     irn = (firs_doc.irn or firs_doc.irn_unix_timestamp or "").strip()
+     if not irn:
+          firs_doc.db_set({
+               "status": "Failed Validation",
+               "sync_status": "Failed",
+               "last_error": "IRN is missing for patch update",
+               "response_log": json.dumps({"error": "IRN is missing for patch update", "saved_at": frappe.utils.now()}, indent=4)
+          }, update_modified=False)
+          frappe.db.commit()
+          return
+
+     try:
+          if sales_invoice.docstatus == 2:
+               payment_status = "REJECTED"
+               reference = f"sales_invoice_cancelled:{sales_invoice.name}"
+          elif (sales_invoice.status or "").strip().lower() == "paid":
+               payment_status = "PAID"
+               reference = f"sales_invoice_paid:{sales_invoice.name}"
+          else:
+               return
+
+          update_response = call_invoice_update_api(
+               irn=irn,
+               payment_status=payment_status,
+               api_key=firs_settings.api_key or "YOUR_API_KEY",
+               secret_key=firs_settings.client_secret or "YOUR_SECRET_KEY",
+               base_url=firs_settings.base_url,
+               reference=reference,
+               timeout=REQUEST_TIMEOUT,
+               retries=RETRY_COUNT
+          )
+
+          if update_response.get("success"):
+               firs_doc.db_set({
+                    "status": "Signed",
+                    "sync_status": "Synced",
+                    "payment_status": payment_status,
+                    "is_cancelled": 1 if sales_invoice.docstatus == 2 else 0,
+                    "last_patch_response": json.dumps(update_response, indent=4),
+                    "last_sync_at": frappe.utils.now(),
+                    "last_error": "",
+                    "response_log": json.dumps({"patch_response": update_response, "saved_at": frappe.utils.now()}, indent=4)
+               }, update_modified=False)
+               frappe.db.commit()
+               return
+
+          firs_doc.db_set({
+               "status": "Failed Validation",
+               "sync_status": "Failed",
+               "payment_status": payment_status,
+               "last_patch_response": json.dumps(update_response, indent=4),
+               "last_error": update_response.get("error") or "Patch update failed",
+               "response_log": json.dumps({
+                    "patch_error": update_response,
+                    "saved_at": frappe.utils.now()
+               }, indent=4)
+          }, update_modified=False)
+          frappe.db.commit()
+
+     except Exception:
+          frappe.log_error(frappe.get_traceback(), "FIRS invoice patch update error")
+          firs_doc.db_set({
+               "status": "Failed Validation",
+               "sync_status": "Failed",
+               "last_error": frappe.get_traceback(),
+               "response_log": json.dumps({
+                    "error": "Patch update exception",
+                    "traceback": frappe.get_traceback(),
+                    "saved_at": frappe.utils.now()
+               }, indent=4)
+          }, update_modified=False)
+          frappe.db.commit()
