@@ -219,7 +219,7 @@ def process_einvoice_job():
      """Main loop executing via Frappe scheduler."""
      pending_validation = frappe.get_all(
           "FIRS EInvoice",
-          filters={"status": "Pending Validation"},
+          filters={"sync_status": "Pending Validation"},
           pluck="name"
      )
      for firs_name in pending_validation:
