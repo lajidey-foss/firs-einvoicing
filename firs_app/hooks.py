@@ -155,7 +155,7 @@ doc_events = {
 # Runs every 15 minutes
 scheduler_events = {
     "cron": {
-        "*/1 * * * *":[
+        "*/5 * * * *":[
             "firs_app.utils.firs_invoice.process_einvoice_job"
         ]
     }
