@@ -12,6 +12,7 @@ import qrcode
 from io import BytesIO
 import requests
 from typing import Dict, Any, Optional
+from urllib.parse import quote
 from frappe.utils import cstr, flt
 from collections import defaultdict
 
@@ -21,6 +22,11 @@ VALIDATE_INVOICE_DATA = "/api/v1/invoice/validate"
 SIGN_INVOICE_SCHEMA = "/api/v1/invoice/sign"
 AUTH_PATH = "/api/v1/utilities/authenticate"
 UPDATE_EINVOICE = "/api/v1/invoice/update"
+DOWNLOAD_INVOICE = "/api/v1/invoice/download"
+CONFIRM_INVOICE = "/api/v1/invoice/confirm"
+SEARCH_INVOICE = "/api/v1/invoice"
+LOOKUP_INVOICE = "/api/v1/invoice/transmit/lookup"
+TRANSMIT_INVOICE = "/api/v1/invoice/transmit"
 REQUEST_TIMEOUT = 15 # seconds 
 RETRY_COUNT = 2 
 RETRY_DELAY = 2 # seconds
@@ -559,6 +565,154 @@ def _build_headers(api_key: str, secret_key: str) -> Dict[str, str]:
         "x-api-key": api_key,
         "x-api-secret": secret_key
     }
+
+
+def _firs_action_context(invoice_name: str):
+    """Return the submitted invoice, settings, and IRN for a desk action."""
+    invoice = frappe.get_doc("Sales Invoice", invoice_name)
+    invoice.check_permission("read")
+    if invoice.docstatus != 1:
+        frappe.throw("FIRS actions are available only for submitted Sales Invoices.")
+
+    irn = (invoice.custom_irn_unix_timestamp or "").strip()
+    if not irn:
+        frappe.throw("This Sales Invoice does not have a FIRS IRN.")
+
+    settings = frappe.get_doc("FIRS Einvoice Settings")
+    if not settings.enabled:
+        frappe.throw("FIRS e-invoicing is disabled.")
+    if not settings.base_url:
+        frappe.throw("FIRS Base URL is not configured.")
+
+    return invoice, settings, irn
+
+
+def _firs_action_request(settings, method: str, path: str, params=None, payload=None, accept=None):
+    """Call a FIRS action endpoint and normalize JSON or text responses."""
+    headers = _build_headers(settings.api_key or "", settings.client_secret or "")
+    if accept:
+        headers["Accept"] = accept
+
+    try:
+        response = requests.request(
+            method=method,
+            url=settings.base_url.rstrip("/") + path,
+            params=params,
+            json=payload,
+            headers=headers,
+            timeout=REQUEST_TIMEOUT
+        )
+    except requests.RequestException as exc:
+        return {
+            "success": False,
+            "status_code": None,
+            "content_type": "",
+            "body": None,
+            "error": str(exc)
+        }
+    content_type = response.headers.get("Content-Type", "").split(";", 1)[0].strip()
+    try:
+        body = response.json() if "json" in content_type else response.text
+    except ValueError:
+        body = response.text
+
+    return {
+        "success": response.ok,
+        "status_code": response.status_code,
+        "content_type": content_type,
+        "body": body,
+        "error": None if response.ok else body
+    }
+
+
+@frappe.whitelist()
+def validate_irn(invoice_name: str):
+    invoice, settings, irn = _firs_action_context(invoice_name)
+    return _firs_action_request(
+        settings,
+        "POST",
+        VALIDATE_IRN,
+        payload={
+            "invoice_reference": invoice.name,
+            "business_id": settings.business_id,
+            "irn": irn
+        }
+    )
+
+
+@frappe.whitelist()
+def download_invoice(invoice_name: str):
+    _, settings, irn = _firs_action_context(invoice_name)
+    result = _firs_action_request(
+        settings,
+        "GET",
+        f"{DOWNLOAD_INVOICE}/{quote(irn, safe='')}",
+        accept="application/xml"
+    )
+    result["filename"] = f"{invoice_name}-{irn}.xml"
+    return result
+
+
+@frappe.whitelist()
+def confirm_invoice(invoice_name: str):
+    _, settings, irn = _firs_action_context(invoice_name)
+    return _firs_action_request(
+        settings,
+        "GET",
+        f"{CONFIRM_INVOICE}/{quote(irn, safe='')}"
+    )
+
+
+@frappe.whitelist()
+def search_invoice(invoice_name: str, filters=None):
+    _, settings, irn = _firs_action_context(invoice_name)
+    if isinstance(filters, str):
+        filters = json.loads(filters or "{}")
+    filters = filters or {}
+    business_id = filters.get("business_id") or settings.business_id
+    if not business_id:
+        frappe.throw("Business ID is not configured.")
+
+    params = {
+        "size": filters.get("size") or 20,
+        "page": filters.get("page") or 1,
+        "sort_by": filters.get("sort_by") or "created_at",
+        "sort_direction_desc": filters.get("sort_direction_desc", True),
+        "irn": irn
+    }
+    optional_filters = (
+        "payment_status",
+        "invoice_type_code",
+        "issue_date",
+        "due_date",
+        "tax_currency_code",
+        "document_currency_code"
+    )
+    for fieldname in optional_filters:
+        if filters.get(fieldname):
+            params[fieldname] = filters[fieldname]
+
+    return _firs_action_request(settings, "GET", f"{SEARCH_INVOICE}/{quote(business_id, safe='')}", params=params)
+
+
+@frappe.whitelist()
+def lookup_invoice(invoice_name: str):
+    _, settings, irn = _firs_action_context(invoice_name)
+    return _firs_action_request(
+        settings,
+        "GET",
+        f"{LOOKUP_INVOICE}/{quote(irn, safe='')}"
+    )
+
+
+@frappe.whitelist()
+def transmit_invoice(invoice_name: str):
+    _, settings, irn = _firs_action_context(invoice_name)
+    return _firs_action_request(
+        settings,
+        "POST",
+        f"{TRANSMIT_INVOICE}/{quote(irn, safe='')}"
+    )
 
 def call_invoice_validation_api(payload: Dict[str, Any],
                                 api_key: str,
