@@ -125,7 +125,6 @@ def sync_sales_invoice_to_einvoice(doc, action="create"):
                "firs_invoice_schema": json.dumps(invoice_schema_paylod, indent=4),
                "sales_invoice_status": doc.status,
                "payment_status": doc.status,
-               "status": "Pending Validation",
                "sync_status": "Pending Validation",
                "last_sync_at": frappe.utils.now(),
                "is_cancelled": 0
@@ -161,7 +160,6 @@ def sync_sales_invoice_to_einvoice(doc, action="create"):
      if not (is_cancelled or is_paid_transition):
           return
 
-     firs_doc.status = "Pending Update"
      firs_doc.sync_status = "Pending Update"
      firs_doc.is_cancelled = 1 if is_cancelled else 0
      firs_doc.response_log = json.dumps({
@@ -1063,7 +1061,7 @@ def get_rounded_tax_amount(itemised_tax, precision):
 
 def execute_validation_and_sign(data):
      """Validate and sign a pending FIRS invoice."""
-     if not data or data.status != "Pending Validation":
+     if not data or data.sync_status != "Pending Validation":
           return
 
      firs_settings = frappe.get_doc('FIRS Einvoice Settings')
@@ -1074,7 +1072,7 @@ def execute_validation_and_sign(data):
           payload = json.loads(data.firs_invoice_schema or "{}")
           if not payload:
                data.db_set({
-                    "status": "Failed Validation",
+                    "firs_status": "Failed Validation",
                     "sync_status": "Failed",
                     "last_error": "Missing invoice schema",
                     "response_log": json.dumps({"error": "Missing invoice schema", "saved_at": frappe.utils.now()}, indent=4)
@@ -1112,8 +1110,8 @@ def execute_validation_and_sign(data):
                          update_modified=False
                     )
                data.db_set({
-                    "status": "Signed",
-                    "sync_status": "Synced",
+                    "firs_status": "Synced",
+                    "sync_status": "Signed",
                     "last_signing_response": json.dumps(sign_response, indent=4),
                     "last_sync_at": frappe.utils.now(),
                     "last_error": "",
@@ -1123,7 +1121,7 @@ def execute_validation_and_sign(data):
                return
 
           data.db_set({
-               "status": "Failed Validation",
+               "firs_status": "Failed Validation",
                "sync_status": "Failed",
                "last_error": (sign_response.get("error") if sign_response else "Signing failed") or "Signing failed",
                "last_signing_response": json.dumps(sign_response, indent=4) if sign_response else json.dumps({"error": "Signing failed"}, indent=4),
