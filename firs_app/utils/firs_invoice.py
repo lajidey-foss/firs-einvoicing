@@ -1084,7 +1084,7 @@ def execute_validation_and_sign(data):
           data.last_validation_response = json.dumps(val_response, indent=4) if val_response else None
           if not val_response or val_response.get("status_code") not in [200, 201]:
                data.db_set({
-                    "status": "Failed Validation",
+                    "firs_status": "Failed Validation",
                     "sync_status": "Failed",
                     "last_error": val_response.get("error") if val_response else "Validation failed",
                     "last_validation_response": json.dumps(val_response, indent=4) if val_response else json.dumps({"error": "Validation failed"}, indent=4),
@@ -1136,7 +1136,7 @@ def execute_validation_and_sign(data):
      except Exception:
           frappe.log_error(frappe.get_traceback(), "FIRS EInoice Sign Error")
           data.db_set({
-               "status": "Failed Validation",
+               "firs_status": "Failed Validation",
                "sync_status": "Failed",
                "last_error": frappe.get_traceback(),
                "response_log": json.dumps({
@@ -1153,7 +1153,7 @@ def execute_einvoice_patch_update(firs_doc):
      if not firs_doc:
           return
 
-     if firs_doc.status not in ["Pending Update", "Cancelled"] and firs_doc.sync_status != "Pending Update":
+     if firs_doc.firs_status not in ["Pending Update", "Cancelled"] and firs_doc.sync_status != "Pending Update":
           return
 
      sales_invoice_code = firs_doc.sales_invoice_code or firs_doc.sales_invoice
@@ -1163,7 +1163,7 @@ def execute_einvoice_patch_update(firs_doc):
      sales_invoice = frappe.get_doc("Sales Invoice", sales_invoice_code)
      if not sales_invoice:
           firs_doc.db_set({
-               "status": "Failed Validation",
+               "firs_status": "Failed Validation",
                "sync_status": "Failed",
                "last_error": "Sales Invoice not found",
                "response_log": json.dumps({"error": "Sales Invoice not found", "saved_at": frappe.utils.now()}, indent=4)
@@ -1178,7 +1178,7 @@ def execute_einvoice_patch_update(firs_doc):
      irn = (firs_doc.irn or firs_doc.irn_unix_timestamp or "").strip()
      if not irn:
           firs_doc.db_set({
-               "status": "Failed Validation",
+               "firs_status": "Failed Validation",
                "sync_status": "Failed",
                "last_error": "IRN is missing for patch update",
                "response_log": json.dumps({"error": "IRN is missing for patch update", "saved_at": frappe.utils.now()}, indent=4)
@@ -1209,7 +1209,7 @@ def execute_einvoice_patch_update(firs_doc):
 
           if update_response.get("success"):
                firs_doc.db_set({
-                    "status": "Signed",
+                    "firs_status": "Signed",
                     "sync_status": "Synced",
                     "payment_status": payment_status,
                     "is_cancelled": 1 if sales_invoice.docstatus == 2 else 0,
@@ -1222,7 +1222,7 @@ def execute_einvoice_patch_update(firs_doc):
                return
 
           firs_doc.db_set({
-               "status": "Failed Validation",
+               "firs_status": "Failed Validation",
                "sync_status": "Failed",
                "payment_status": payment_status,
                "last_patch_response": json.dumps(update_response, indent=4),
@@ -1237,7 +1237,7 @@ def execute_einvoice_patch_update(firs_doc):
      except Exception:
           frappe.log_error(frappe.get_traceback(), "FIRS invoice patch update error")
           firs_doc.db_set({
-               "status": "Failed Validation",
+               "firs_status": "Failed Validation",
                "sync_status": "Failed",
                "last_error": frappe.get_traceback(),
                "response_log": json.dumps({
