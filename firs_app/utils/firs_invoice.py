@@ -177,7 +177,7 @@ def sync_sales_invoice_to_einvoice(doc, action="create"):
 def get_unix_timestamp(pdate):
     uxtime = int(time.time())
     pdate = pdate.replace("-", "")
-    result = f"{pdate}.{str(uxtime)}" #f"{pdate}" 
+    result = f"{pdate}"  # f"{pdate}.{str(uxtime)}" #
     #print(f"\n\n ========unix date & timestamp ===========> {result}")
     return result
 
