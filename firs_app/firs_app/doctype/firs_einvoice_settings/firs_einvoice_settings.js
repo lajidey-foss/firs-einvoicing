@@ -39,20 +39,12 @@ frappe.ui.form.on("FIRS Einvoice Settings", {
 	},
 
     get_invoice_type: function (frm) {
-        const url = MY_APP_CONFIG.get_url(frm.doc.base_url, "api/v1/invoice/resources/invoice-types");
-
-        fetch(url, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json"
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
+        fetchResource(frm.doc.base_url, "api/v1/invoice/resources/invoice-types")
+        .then(invoiceTypes => {
             frappe.call({
                 method: "firs_app.utils.firs_einvoicing.update_invoice_type",
                 args: {
-                    invoice_data: data.data
+                    invoice_data: invoiceTypes
                 },
                 callback: function (r) {
                     if (!r.exc) {
@@ -67,28 +59,14 @@ frappe.ui.form.on("FIRS Einvoice Settings", {
         });
     },
     get_currencies: function (frm) {
-        // const url = values.base_url.replace(/\/+$/, '') + values.endpoint;
-        let endpoint = "api/v1/invoice/resources/currencies";
-        const url = MY_APP_CONFIG.get_url(frm.doc.base_url,endpoint);
-
         frm.page.set_indicator(__('Syncing currencies...'), 'orange');
 
-        // Call external API
-        fetch(url, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json"
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            // data = array of currency objects
-            console.log("data returned :", data.data);
-
+        fetchResource(frm.doc.base_url, "api/v1/invoice/resources/currencies")
+        .then(currencies => {
             frappe.call({
                 method: "firs_app.utils.firs_einvoicing.update_currencies",
                 args: {
-                    currency_data: data.data
+                    currency_data: currencies
                 },
                 freeze: true, 
                 freeze_message: __("Saving currencies to site..."),
@@ -113,25 +91,12 @@ frappe.ui.form.on("FIRS Einvoice Settings", {
 
     },
     get_countries: function (frm) {
-        const url = MY_APP_CONFIG.get_url(frm.doc.base_url,'api/v1/invoice/resources/countries');
-        
-
-        // Call external API
-        fetch(url, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json"
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            // data = array of country objects
-            console.log("data returned :", data.data);
-
+        fetchResource(frm.doc.base_url, "api/v1/invoice/resources/countries")
+        .then(countries => {
             frappe.call({
                 method: "firs_app.utils.firs_einvoicing.update_countries",
                 args: {
-                    countries_data: data.data
+                    countries_data: countries
                 },
                 callback: function (r) {
                     if (!r.exc) {
@@ -147,25 +112,12 @@ frappe.ui.form.on("FIRS Einvoice Settings", {
 
     },
     get_payment_means: function (frm) {
-        // pending returned null -- handle null
-        const url = MY_APP_CONFIG.get_url(frm.doc.base_url,'api/v1/invoice/resources/payment_means');
-        console.log("uri :",url);
-                // Call external API
-                fetch(url, {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json"
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // data should be an array of { code, value }
-                    console.log("data 1 :", data);
-
+        fetchResource(frm.doc.base_url, "api/v1/invoice/resources/payment_means")
+                .then(paymentMeans => {
                     frappe.call({
                         method: "firs_app.utils.firs_einvoicing.update_payment_means",
                         args: {
-                            invoice_data: data.data
+                            invoice_data: paymentMeans
                         },
                         callback: function (r) {
                             if (!r.exc) {
@@ -214,24 +166,12 @@ frappe.ui.form.on("FIRS Einvoice Settings", {
     },
     //
     get_all_states: function (frm) {
-        
-        const url = MY_APP_CONFIG.get_url(frm.doc.base_url,'api/v1/invoice/resources/states');
-                // Call external API
-                fetch(url, {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json"
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // data should be an array of { code, value }
-                    console.log("data returned :", data.data);
-
+        fetchResource(frm.doc.base_url, "api/v1/invoice/resources/states")
+                .then(states => {
                     frappe.call({
                         method: "firs_app.utils.firs_einvoicing.update_all_states",
                         args: {
-                            invoice_data: data.data
+                            invoice_data: states
                         },
                         callback: function (r) {
                             if (!r.exc) {
@@ -247,25 +187,12 @@ frappe.ui.form.on("FIRS Einvoice Settings", {
     },
     //
     get_categories: function (frm) {
-        
-        const url = MY_APP_CONFIG.get_url(frm.doc.base_url,'api/v1/invoice/resources/tax-categories');
-        
-                // Call external API
-                fetch(url, {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json"
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // data should be an array of { code, value }
-                    console.log("data returned :", data.data);
-
+        fetchResource(frm.doc.base_url, "api/v1/invoice/resources/tax-categories")
+                .then(categories => {
                     frappe.call({
                         method: "firs_app.utils.firs_einvoicing.update_tax_categories",
                         args: {
-                            invoice_data: data.data
+                            invoice_data: categories
                         },
                         callback: function (r) {
                             if (!r.exc) {
@@ -281,24 +208,12 @@ frappe.ui.form.on("FIRS Einvoice Settings", {
     },
     //
     get_services_codes: function (frm) {
-        
-        const url = MY_APP_CONFIG.get_url(frm.doc.base_url,'api/v1/invoice/resources/services-codes');
-                // Call external API
-                fetch(url, {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json"
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // data should be an array of { code, value }
-                    console.log("data returned :", data.data);
-
+        fetchResource(frm.doc.base_url, "api/v1/invoice/resources/services-codes")
+                .then(services => {
                     frappe.call({
                         method: "firs_app.utils.firs_einvoicing.update_services_codes",
                         args: {
-                            invoice_data: data.data
+                            invoice_data: services
                         },
                         callback: function (r) {
                             if (!r.exc) {
@@ -314,24 +229,12 @@ frappe.ui.form.on("FIRS Einvoice Settings", {
     },
     //
     get_all_local_governments: function (frm) {
-        
-        const url = MY_APP_CONFIG.get_url(frm.doc.base_url,'api/v1/invoice/resources/lgas');
-                // Call external API
-                fetch(url, {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json"
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // data should be an array of { code, value }
-                    console.log("data returned :", data.data);
-
+        fetchResource(frm.doc.base_url, "api/v1/invoice/resources/lgas")
+                .then(localGovernments => {
                     frappe.call({
                         method: "firs_app.utils.firs_einvoicing.update_local_governments",
                         args: {
-                            invoice_data: data.data
+                            invoice_data: localGovernments
                         },
                         callback: function (r) {
                             if (!r.exc) {
