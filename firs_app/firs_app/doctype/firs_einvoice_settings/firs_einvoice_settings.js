@@ -1,12 +1,36 @@
 // Copyright (c) 2025, Jide Olayinka and contributors
 // For license information, please see license.txt
 
-// Define this at the top of your custom script file
 const MY_APP_CONFIG = {
-    BASE_URL: "",/*"api.external-service.com"
-    get_url: (endpoint) => MY_APP_CONFIG.BASE_URL + endpoint.replace(/^\//, '')*/
-    get_url: (baseurl,endpoint) => baseurl + endpoint.replace(/^\//, '')
+    get_url(baseurl, endpoint) {
+        if (!baseurl || !baseurl.trim()) {
+            throw new Error("Base URL is not configured");
+        }
+
+        return `${baseurl.replace(/\/+$/, "")}/${endpoint.replace(/^\/+/, "")}`;
+    }
 };
+
+async function fetchResource(baseurl, endpoint) {
+    const url = MY_APP_CONFIG.get_url(baseurl, endpoint);
+    const response = await fetch(url, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error(`External API returned HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+    if (!result || !Array.isArray(result.data)) {
+        throw new Error("External API returned an invalid data format");
+    }
+
+    return result.data;
+}
 
 frappe.ui.form.on("FIRS Einvoice Settings", {
 	refresh(frm) {
@@ -15,37 +39,32 @@ frappe.ui.form.on("FIRS Einvoice Settings", {
 	},
 
     get_invoice_type: function (frm) {
-        let endpoint = "api/v1/invoice/resources/invoice-types"
-        const url = MY_APP_CONFIG.get_url(frm.doc.base_url, endpoint);
-        console.log("url :",url);
-                // Call external API
-                fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        "Content-Type": "application/json"
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // data should be an array of { code, value }
-                    console.log("data returned :", data.data);
+        const url = MY_APP_CONFIG.get_url(frm.doc.base_url, "api/v1/invoice/resources/invoice-types");
 
-                    frappe.call({
-                        method: "firs_app.utils.firs_einvoicing.update_invoice_type",
-                        args: {
-                            invoice_data: data.data
-                        },
-                        callback: function (r) {
-                            if (!r.exc) {
-                                frappe.msgprint("Invoice Niche updated successfully");
-                            }
-                        }
-                    });
-                })
-                .catch(error => {
-                    console.error(error);
-                    frappe.msgprint("Failed to fetch external data");
-                });
+        fetch(url, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            frappe.call({
+                method: "firs_app.utils.firs_einvoicing.update_invoice_type",
+                args: {
+                    invoice_data: data.data
+                },
+                callback: function (r) {
+                    if (!r.exc) {
+                        frappe.msgprint("Invoice Niche updated successfully");
+                    }
+                }
+            });
+        })
+        .catch(error => {
+            console.error(error);
+            frappe.msgprint("Failed to fetch external data");
+        });
     },
     get_currencies: function (frm) {
         // const url = values.base_url.replace(/\/+$/, '') + values.endpoint;
@@ -162,37 +181,36 @@ frappe.ui.form.on("FIRS Einvoice Settings", {
     },
     //
     get_products_codes: function (frm) {
-        
-        const url = MY_APP_CONFIG.get_url(frm.doc.base_url,'api/v1/invoice/resources/hs-codes');
-        
-                // Call external API
-                fetch(url, {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json"
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // data should be an array of { code, value }
-                    console.log("data returned :", data.data);
+        fetchResource(frm.doc.base_url, "api/v1/invoice/resources/hs-codes")
+            .then(products => {
+                const invalidProduct = products.find(product =>
+                    !product || !String(product.hscode || "").trim()
+                );
 
-                    frappe.call({
-                        method: "firs_app.utils.firs_einvoicing.update_products_codes",
-                        args: {
-                            invoice_data: data.data
-                        },
-                        callback: function (r) {
-                            if (!r.exc) {
-                                frappe.msgprint("Invoice Niche updated successfully");
-                            }
-                        }
-                    });
-                })
-                .catch(error => {
-                    console.error(error);
-                    frappe.msgprint("Failed to fetch external data");
+                if (invalidProduct) {
+                    throw new Error("External API returned a product without an hscode");
+                }
+
+                return frappe.call({
+                    method: "firs_app.utils.firs_einvoicing.update_products_codes",
+                    args: {
+                        invoice_data: products
+                    },
+                    freeze: true,
+                    freeze_message: __("Saving product codes...")
                 });
+            })
+            .then(result => {
+                if (result.exc) {
+                    throw new Error(result.exc);
+                }
+
+                frappe.msgprint(__("Product codes updated successfully"));
+            })
+            .catch(error => {
+                console.error("Product code synchronization failed:", error);
+                frappe.msgprint(__("Product code synchronization failed: {0}", [error.message]));
+            });
     },
     //
     get_all_states: function (frm) {
