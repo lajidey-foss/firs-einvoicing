@@ -401,8 +401,10 @@ def build_invoice_schema(doc, settings):
         "accounting_customer_party": customer,
         "tax_total": tax_total,
         "legal_monetary_total": legal_monetary_total,
-        "invoice_line": invoice_lines
+        "invoice_line": build_invoice_payload(doc)
+        
     }
+    # "invoice_line": invoice_lines
     if doc.get("status") == "Paid":
          vch_payload["payment_status"] = "PAID"
 
@@ -1247,3 +1249,142 @@ def execute_einvoice_patch_update(firs_doc):
                }, indent=4)
           }, update_modified=False)
           frappe.db.commit()
+
+def add_if_value (data, key, value):
+    """Add key only when value is not empty."""
+    if value is not None and value != "":
+        data[key] = value
+
+def build_invoice_line (row):
+    """Convert one Sales Invoice Item into invoice_line format."""
+
+    line = {
+        "invoiced_quantity": flt(row.qty),
+        "line_extension_amount": flt(row.amount),
+
+        "item": {
+            "name": row.item_name,
+            "description": row.description or "",
+        },
+
+        "price": {
+            "price_amount": flt(row.rate),
+            "base_quantity": flt(
+                getattr(row, "base_quantity", 1)
+            ) or 1,
+            "price_unit": getattr(row, "uom", None) or "XBG",
+        },
+    }
+
+    # ---------------------------------------------------------
+    # Goods vs Service
+    # ---------------------------------------------------------
+
+    # Determine if item is a service or product based on Item doctype
+    itm = frappe.get_doc('Item', row.item_code)
+    is_service = itm.custom_firs_item_type == "Service"
+
+    if is_service:
+
+        add_if_value(
+            line,
+            "isic_code",
+            getattr(row, itm.get("custom_firs_service_code"), None)
+        )
+
+        add_if_value(
+            line,
+            "service_category",
+            getattr(row, itm.get("custom_firs_service_description"), None)
+        )
+
+    else:
+
+        hsn_code = (
+            getattr(row, itm.get("custom_hs_code"), None)
+            or getattr(row, "hsn_code", None)
+        )
+
+        add_if_value(
+            line,
+            "hsn_code",
+            hsn_code
+        )
+
+        add_if_value(
+            line,
+            "product_category",
+            getattr(row, itm.get("custom_hs_product_description"), None)
+        )
+
+    # ---------------------------------------------------------
+    # Seller identification
+    # ---------------------------------------------------------
+
+    add_if_value(
+        line["item"],
+        "sellers_item_identification",
+        row.item_code
+    )
+
+    # ---------------------------------------------------------
+    # Discount
+    # ---------------------------------------------------------
+
+    add_if_value(
+        line,
+        "discount_rate",
+        flt(getattr(row, "discount_percentage", 0))
+    )
+
+    add_if_value(
+        line,
+        "discount_amount",
+        flt(getattr(row, "discount_amount", 0))
+    )
+
+    # ---------------------------------------------------------
+    # Fees
+    # ---------------------------------------------------------
+
+    add_if_value(
+        line,
+        "fee_rate",
+        flt(getattr(row, "rate", 0)) 
+    )
+    # flt(getattr(row, "fee_rate", 0))
+
+    add_if_value(
+        line,
+        "fee_amount",
+        flt(getattr(row, "amount", 0))
+    )
+
+    # ---------------------------------------------------------
+    # Tax
+    # ---------------------------------------------------------
+
+    add_if_value(
+        line,
+        "tax_rate",
+        flt(getattr(row, "tax_rate", 0))
+    )
+
+    add_if_value(
+        line,
+        "tax_amount",
+        flt(getattr(row, "tax_amount", 0))
+    )
+
+    return line
+def build_invoice_lines (doc):
+
+    return [
+        build_invoice_line(row)
+        for row in doc.items
+    ]
+def build_invoice_payload (doc):
+
+    return {
+        "invoice_line": build_invoice_lines(doc)
+    }
