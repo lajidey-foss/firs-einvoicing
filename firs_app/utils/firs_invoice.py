@@ -1385,6 +1385,4 @@ def build_invoice_lines (doc):
     ]
 def build_invoice_payload (doc):
 
-    return {
-        "invoice_line": build_invoice_lines(doc)
-    }
+    return  build_invoice_lines(doc)
