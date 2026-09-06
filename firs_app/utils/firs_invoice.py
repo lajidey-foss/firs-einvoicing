@@ -1279,9 +1279,11 @@ def build_invoice_line (row):
             "base_quantity": flt(
                 getattr(row, "base_quantity", 1)
             ) or 1,
-            "price_unit": getattr(row, "uom", None) or "XBG",
+            "price_unit":  "NGN per 1",
         },
+        
     }
+    # "price_unit": getattr(row, "uom", None) or "XBG",
 
     # ---------------------------------------------------------
     # Goods vs Service
