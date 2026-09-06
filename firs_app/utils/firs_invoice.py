@@ -316,7 +316,7 @@ def build_invoice_schema(doc, settings):
         itm = frappe.get_doc('Item', item.get("item_code"))
         invoice_lines.append({
             "hsn_code": itm.get("custom_hs_code") if itm.custom_firs_item_type == f"Product" else itm.get("custom_firs_service_code"),
-            "product_category": itm.get("custom_hs_product_description") or  "",
+            "product_category": itm.get("custom_firs_item_type") or  "",
             "discount_rate": item.get("discount_percentage") or 0.0,
             "discount_amount": item.get("discount_amount") or 0.0,
             "fee_rate": item.get("fee_rate") or 0.0,
@@ -1291,39 +1291,35 @@ def build_invoice_line (row):
 
     # Determine if item is a service or product based on Item doctype
     itm = frappe.get_doc('Item', row.item_code)
-    is_service = itm.custom_firs_item_type == "Service"
+    item_type = itm.get("custom_firs_item_type")
+    is_service = item_type == "Service"
 
     if is_service:
 
         add_if_value(
             line,
             "isic_code",
-            getattr(row, itm.get("custom_firs_service_code"), None)
+            itm.get("custom_firs_service_code")
         )
 
         add_if_value(
             line,
             "service_category",
-            getattr(row, itm.get("custom_firs_item_type"), None)
+            item_type
         )
 
     else:
 
-        hsn_code = (
-            getattr(row, itm.get("custom_hs_code"), None)
-            or getattr(row, "hsn_code", None)
-        )
-
         add_if_value(
             line,
             "hsn_code",
-            hsn_code
+            itm.get("custom_hs_code") or getattr(row, "hsn_code", None)
         )
 
         add_if_value(
             line,
             "product_category",
-            getattr(row, itm.get("custom_firs_item_type"), None)
+            item_type
         )
 
     # ---------------------------------------------------------
