@@ -360,7 +360,7 @@ def build_invoice_schema(doc, settings):
                 'taxable_amount': round(vals['taxable_amount'], 2),
                 'tax_amount': round(vals['tax_amount'], 2),
                 'tax_category': {
-                    'id': tax_key,
+                    'id': remove_last_part(tax_key),
                     'percent':  round(vals['percent'], 1)
                 }
             }]
@@ -410,10 +410,13 @@ def build_invoice_schema(doc, settings):
 
     return vch_payload
 
+def  remove_last_part(value):
+    return value.rsplit("-", 1)[0].strip()
+
 def get_tax_details(itemx, taxex):
-    print(f"got here")
+
     summary_data = frappe._dict()
-    print(f"\n==> frappe declaration :{summary_data}")
+    # print(f"\n==> frappe declaration :{summary_data}")
     for tax in taxex: 
         # include only VAT charges.
         if tax.charge_type == "Actual":
@@ -974,6 +977,7 @@ def get_itemised_tax_breakup_html(doc):
 	get_rounded_tax_amount(itemised_tax_data, doc.precision("tax_amount", "taxes"))
 
 def get_itemised_tax_breakup(doc):
+    print(f"\n==> frappe declaration :")
     if not doc.taxes:
         return
     # get headers  
@@ -987,9 +991,12 @@ def get_itemised_tax_breakup(doc):
 			
             continue
 		
-        if tax.description not in tax_accounts:
+        """ if tax.description not in tax_accounts:
 			
-            tax_accounts.append(tax.description) 
+            tax_accounts.append(tax.description)  """
+        if tax.account_head not in tax_accounts:
+             tax_accounts.append(tax.account_head)
+    
 	
     itemised_tax_data = get_itemised_tax_breakup_data(doc)
 	
@@ -1292,11 +1299,11 @@ def build_invoice_line (row):
             getattr(row, itm.get("custom_firs_service_code"), None)
         )
 
-        add_if_value(
+        """ add_if_value(
             line,
             "service_category",
             getattr(row, itm.get("custom_firs_service_description"), None)
-        )
+        ) """
 
     else:
 
@@ -1311,11 +1318,11 @@ def build_invoice_line (row):
             hsn_code
         )
 
-        add_if_value(
+        """ add_if_value(
             line,
             "product_category",
             getattr(row, itm.get("custom_hs_product_description"), None)
-        )
+        ) """
 
     # ---------------------------------------------------------
     # Seller identification
