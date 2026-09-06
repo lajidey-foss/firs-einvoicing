@@ -797,12 +797,11 @@ def save_validation_result_to_doc(invoice_name:str, validation_result:Dict[str, 
     except Exception:
         frappe.log_error(frappe.get_traceback(), "save_validation_result_to_doc error")
 
-def submit_sign(self,firs_settings, schema_paylod):
+def submit_sign(firs_settings, schema_paylod):
 
     firs_settings = frappe.get_doc('FIRS Einvoice Settings')
     # endpoint call POST base_url/api/v1/invoice/sign
     # get the schema
-    invoice_payload = self.custom_firs_invoice_schema
     """ 
         self.db_set("api_response", json.dumps(res_data, indent=4))
         frappe.msgprint("Invoice Validated Successfully", alert=True) """
