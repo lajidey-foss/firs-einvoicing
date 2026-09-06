@@ -1301,11 +1301,11 @@ def build_invoice_line (row):
             getattr(row, itm.get("custom_firs_service_code"), None)
         )
 
-        """ add_if_value(
+        add_if_value(
             line,
             "service_category",
-            getattr(row, itm.get("custom_firs_service_description"), None)
-        ) """
+            getattr(row, itm.get("custom_firs_item_type"), None)
+        )
 
     else:
 
@@ -1320,11 +1320,11 @@ def build_invoice_line (row):
             hsn_code
         )
 
-        """ add_if_value(
+        add_if_value(
             line,
             "product_category",
-            getattr(row, itm.get("custom_hs_product_description"), None)
-        ) """
+            getattr(row, itm.get("custom_firs_item_type"), None)
+        )
 
     # ---------------------------------------------------------
     # Seller identification
