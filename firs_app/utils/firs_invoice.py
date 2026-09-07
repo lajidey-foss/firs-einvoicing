@@ -812,8 +812,11 @@ def submit_sign(firs_settings, schema_paylod):
         api_key = firs_settings.api_key or "YOUR_API_KEY"
         secret_key = firs_settings.client_secret or "YOUR_SECRET_KEY"
 
-        # call validation endpoint
-        sign_result = call_invoice_signing_api(schema_paylod, api_key, secret_key, firs_settings.base_url)
+        # ✨ Encrypt the payload before signing (hybrid AES-GCM + RSA)
+        encrypted_payload = encrypt_invoce_schema(schema_paylod, firs_settings)
+        
+        # call signing endpoint with encrypted payload
+        sign_result = call_invoice_signing_api(encrypted_payload, api_key, secret_key, firs_settings.base_url)
 
         #save validation
         # remove this logic / as fir_sync doctype is going to be abandon
@@ -821,7 +824,7 @@ def submit_sign(firs_settings, schema_paylod):
         return sign_result
     except Exception:
         # log and persist error info for troubleshooting
-        frappe.log_error(frappe.get_traceback(), "validate_firs_invoice_schema error")
+        frappe.log_error(frappe.get_traceback(), "submit_sign error")
         #custom_valation_data
         #frappe.db.set_value("Firs Syn", self.custom_irn_unix_timestamp, "api_response", json.dumps({"error": "validation_failed"}), update_modified=True)
         #frappe.db.commit()
