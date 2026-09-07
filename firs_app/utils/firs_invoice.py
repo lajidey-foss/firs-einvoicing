@@ -812,15 +812,12 @@ def submit_sign(firs_settings, schema_paylod):
         api_key = firs_settings.api_key or "YOUR_API_KEY"
         secret_key = firs_settings.client_secret or "YOUR_SECRET_KEY"
 
-        # ✨ Wrap the payload in invoiceRequest > invoice structure (as per FIRS API spec)
-        wrapped_payload = {
-            "invoiceRequest": {
-                "invoice": schema_paylod
-            }
-        }
+        # ✨ Send plain payload (same as validation) with debug logging
+        frappe.logger().info(f"[FIRS Sign] Payload IRN: {schema_paylod.get('irn')}")
+        frappe.logger().info(f"[FIRS Sign] Payload keys: {list(schema_paylod.keys())}")
         
-        # call signing endpoint with wrapped payload
-        sign_result = call_invoice_signing_api(wrapped_payload, api_key, secret_key, firs_settings.base_url)
+        # call signing endpoint with plain payload
+        sign_result = call_invoice_signing_api(schema_paylod, api_key, secret_key, firs_settings.base_url)
 
         #save validation
         # remove this logic / as fir_sync doctype is going to be abandon
@@ -840,7 +837,7 @@ def call_invoice_signing_api(payload: Dict[str, Any],
                                 timeout: int = REQUEST_TIMEOUT,
                                 retries: int = RETRY_COUNT) -> Dict[str, Any]:
     """
-    Call external POST /api/v1/invoice/validate with JSON payload and headers.
+    Call external POST /api/v1/invoice/sign with JSON payload and headers.
     Returns a dict with keys: success (bool), status_code (int|None), response (dict|string), error (str|None)
     """
     if not base_url:
@@ -850,9 +847,15 @@ def call_invoice_signing_api(payload: Dict[str, Any],
             "response": None,
             "error": "Base URL is missing"
         }
-    #base_url = base_url
+    
     url = base_url.rstrip("/") + SIGN_INVOICE_SCHEMA
     headers = _build_headers(api_key, secret_key)
+    
+    # Debug logging
+    frappe.logger().info(f"[FIRS Sign API] URL: {url}")
+    frappe.logger().info(f"[FIRS Sign API] Payload IRN: {payload.get('irn') if isinstance(payload, dict) else 'N/A'}")
+    frappe.logger().info(f"[FIRS Sign API] Payload type: {type(payload)}")
+    frappe.logger().info(f"[FIRS Sign API] Payload: {json.dumps(payload, default=str)[:500]}...")  # First 500 chars
 
     last_exception = None
     for attempt in range(1, retries + 2):  # retries attempts + initial
@@ -870,7 +873,7 @@ def call_invoice_signing_api(payload: Dict[str, Any],
                 "response": resp_json,
                 "error": None
             }
-            # ! print(f"\n==> submit response :{resp_json}")
+            frappe.logger().info(f"[FIRS Sign API] Response status: {resp.status_code}")
             return result
 
         except requests.RequestException as exc:
@@ -882,7 +885,7 @@ def call_invoice_signing_api(payload: Dict[str, Any],
                 break
 
     # If we reach here, all attempts failed
-    frappe.log_error(frappe.get_traceback(), "call_invoice_validation_api error")
+    frappe.log_error(frappe.get_traceback(), "call_invoice_signing_api error")
     return {
         "success": False,
         "status_code": None,
