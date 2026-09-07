@@ -812,11 +812,15 @@ def submit_sign(firs_settings, schema_paylod):
         api_key = firs_settings.api_key or "YOUR_API_KEY"
         secret_key = firs_settings.client_secret or "YOUR_SECRET_KEY"
 
-        # ✨ Encrypt the payload before signing (hybrid AES-GCM + RSA)
-        encrypted_payload = encrypt_invoce_schema(schema_paylod, firs_settings)
+        # ✨ Wrap the payload in invoiceRequest > invoice structure (as per FIRS API spec)
+        wrapped_payload = {
+            "invoiceRequest": {
+                "invoice": schema_paylod
+            }
+        }
         
-        # call signing endpoint with encrypted payload
-        sign_result = call_invoice_signing_api(encrypted_payload, api_key, secret_key, firs_settings.base_url)
+        # call signing endpoint with wrapped payload
+        sign_result = call_invoice_signing_api(wrapped_payload, api_key, secret_key, firs_settings.base_url)
 
         #save validation
         # remove this logic / as fir_sync doctype is going to be abandon
